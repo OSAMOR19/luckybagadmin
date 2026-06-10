@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { PasswordManagementModal } from "@/components/password-management-modal"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,7 @@ import { LogOut, User } from "lucide-react"
 export function Navbar() {
   const router = useRouter()
   const { admin, logout } = useAuthStore()
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -53,9 +56,9 @@ export function Navbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
+            <DropdownMenuItem onClick={() => setIsPasswordModalOpen(true)}>
               <User className="mr-2 h-4 w-4" />
-              Settings
+              Password Management
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -64,6 +67,11 @@ export function Navbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <PasswordManagementModal 
+        open={isPasswordModalOpen} 
+        onOpenChange={setIsPasswordModalOpen} 
+      />
     </header>
   )
 }

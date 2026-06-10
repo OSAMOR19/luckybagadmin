@@ -1,6 +1,6 @@
 "use client"
 
-import { useAuth } from "@/lib/auth-context"
+import { useAuthStore } from "@/store/use-auth-store"
 import { hasPermission, type Permission } from "@/lib/rbac"
 import type { ReactNode } from "react"
 
@@ -11,9 +11,9 @@ interface PermissionGuardProps {
 }
 
 export function PermissionGuard({ permission, children, fallback = null }: PermissionGuardProps) {
-  const { user } = useAuth()
+  const { admin } = useAuthStore()
 
-  if (!user || !hasPermission(user.role, permission)) {
+  if (!admin || !hasPermission(admin.role, permission)) {
     return <>{fallback}</>
   }
 

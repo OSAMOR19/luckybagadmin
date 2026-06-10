@@ -15,17 +15,29 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, trend, className }: StatCardProps) {
   return (
-    <Card className={cn("", className)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-5 w-5 text-muted-foreground" />
+    <Card 
+      className={cn(
+        "group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 border-primary/10", 
+        className
+      )}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">
+          {title}
+        </CardTitle>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+          <Icon className="h-5 w-5" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="relative z-10">
+        <div className="text-3xl font-bold tracking-tight">{value}</div>
         {trend && (
-          <p className={cn("text-xs mt-1", trend.isPositive ? "text-green-500" : "text-red-500")}>
-            {trend.isPositive ? "+" : ""}
-            {trend.value}% from last month
+          <p className={cn("text-xs mt-2 font-medium flex items-center gap-1", trend.isPositive ? "text-emerald-500" : "text-rose-500")}>
+            <span className={cn("flex h-4 w-4 items-center justify-center rounded-full", trend.isPositive ? "bg-emerald-500/10" : "bg-rose-500/10")}>
+              {trend.isPositive ? "+" : "-"}
+            </span>
+            {Math.abs(trend.value)}% from last month
           </p>
         )}
       </CardContent>

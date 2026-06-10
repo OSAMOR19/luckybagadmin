@@ -17,6 +17,8 @@ export interface User {
   phone: string
   balance: number
   kycStatus: "pending" | "verified" | "rejected"
+  emailVerified?: boolean
+  smsVerified?: boolean
   isActive: boolean
   createdAt: string
 }
@@ -30,6 +32,9 @@ export interface Game {
   prizePool: number
   status: "upcoming" | "live" | "completed"
   participants: number
+  interval?: string
+  winPercentage?: number
+  maxWinners?: number
 }
 
 export interface Transaction {
@@ -49,4 +54,14 @@ export interface DashboardMetrics {
   totalRevenue: number
   pendingWithdrawals: number
   activeGames: number
+}
+
+export type ActivityType = "draw_completed" | "user_registered" | "wallet_credited" | "game_scheduled" | "admin_login" | "withdrawal_processed"
+
+export interface Activity {
+  id: string
+  title: string
+  description: string
+  type: ActivityType
+  timestamp: string
 }
