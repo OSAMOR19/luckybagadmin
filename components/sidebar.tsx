@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronRight,
   Bell,
+  Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,9 +51,9 @@ const navigationSections = [
         badge: "1.2k",
       },
       {
-        name: "Transactions",
-        href: "/transactions",
-        icon: CreditCard,
+        name: "Wallet Management",
+        href: "/wallet-management",
+        icon: Wallet,
         color: "bg-orange-500",
         badge: "45",
       },
