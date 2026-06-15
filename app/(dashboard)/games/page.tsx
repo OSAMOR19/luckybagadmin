@@ -8,8 +8,17 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CreateGameModal } from "@/components/create-game-modal"
 import { DrawResultsModal } from "@/components/draw-results-modal"
+import { GameParticipantsModal } from "@/components/game-participants-modal"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { mockGames } from "@/lib/mock-data"
-import { Plus, Search, Play, Square, Users, Calendar, Trophy, LayoutGrid, List, Eye } from "lucide-react"
+import { Plus, Search, Play, Square, Users, Calendar, Trophy, LayoutGrid, List, Eye, MoreHorizontal } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -24,6 +33,7 @@ export default function GamesPage() {
   const [viewType, setViewType] = useState<ViewType>("list")
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
   const [selectedGame, setSelectedGame] = useState<typeof games[0] | null>(null)
+  const [selectedParticipantsGame, setSelectedParticipantsGame] = useState<typeof games[0] | null>(null)
   const { toast } = useToast()
 
   const handleStartGame = async (gameId: string) => {
@@ -73,9 +83,9 @@ export default function GamesPage() {
 
   // Filter games based on search and tab
   const filteredGames = games.filter((game) => {
-    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          game.id.toLowerCase().includes(searchQuery.toLowerCase())
-    
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.id.toLowerCase().includes(searchQuery.toLowerCase())
+
     if (!matchesSearch) return false
 
     switch (activeTab) {
@@ -98,13 +108,13 @@ export default function GamesPage() {
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
-              activeTab === "all" 
-                ? "bg-white shadow-sm text-foreground dark:bg-slate-900" 
+              activeTab === "all"
+                ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => setActiveTab("all")}
           >
-            All Games 
+            All Games
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "all" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.all}
             </Badge>
@@ -113,13 +123,13 @@ export default function GamesPage() {
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
-              activeTab === "active" 
-                ? "bg-white shadow-sm text-foreground dark:bg-slate-900" 
+              activeTab === "active"
+                ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => setActiveTab("active")}
           >
-            Active Draw 
+            Active Draw
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "active" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.active}
             </Badge>
@@ -128,13 +138,13 @@ export default function GamesPage() {
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
-              activeTab === "upcoming" 
-                ? "bg-white shadow-sm text-foreground dark:bg-slate-900" 
+              activeTab === "upcoming"
+                ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => setActiveTab("upcoming")}
           >
-            Upcoming Raffles 
+            Upcoming Raffles
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "upcoming" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.upcoming}
             </Badge>
@@ -143,19 +153,19 @@ export default function GamesPage() {
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
-              activeTab === "past" 
-                ? "bg-white shadow-sm text-foreground dark:bg-slate-900" 
+              activeTab === "past"
+                ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => setActiveTab("past")}
           >
-            Past Results 
+            Past Results
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "past" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.past}
             </Badge>
           </Button>
         </div>
-        
+
         <Button className="rounded-xl" onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Game
@@ -173,17 +183,17 @@ export default function GamesPage() {
           />
         </div>
         <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl dark:bg-slate-800/50">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className={cn("rounded-lg h-8 w-8", viewType === "list" ? "bg-white shadow-sm dark:bg-slate-900 text-foreground" : "text-muted-foreground")}
             onClick={() => setViewType("list")}
           >
             <List className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className={cn("rounded-lg h-8 w-8", viewType === "grid" ? "bg-white shadow-sm dark:bg-slate-900 text-foreground" : "text-muted-foreground")}
             onClick={() => setViewType("grid")}
           >
@@ -232,9 +242,9 @@ export default function GamesPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {game.status === "live" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-8 w-24 text-red-500 border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-600 dark:bg-red-950/30 dark:border-red-900/50"
                             onClick={() => handleStopGame(game.id)}
                           >
@@ -242,23 +252,34 @@ export default function GamesPage() {
                           </Button>
                         )}
                         {game.status === "upcoming" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-8 w-24 text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-700 dark:bg-green-950/30 dark:border-green-900/50"
                             onClick={() => handleStartGame(game.id)}
                           >
                             <Play className="mr-1.5 h-3 w-3" /> Start
                           </Button>
                         )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-8 w-24 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary dark:bg-primary/10"
-                          onClick={() => setSelectedGame(game)}
-                        >
-                          <Eye className="mr-1.5 h-3 w-3" /> Results
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setSelectedParticipantsGame(game)}>
+                              <Users className="mr-2 h-4 w-4" />
+                              View Participants
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSelectedGame(game)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Results
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -340,9 +361,9 @@ export default function GamesPage() {
                       Stop Game
                     </Button>
                   )}
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="flex-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary dark:bg-primary/10"
                     onClick={() => setSelectedGame(game)}
                   >
@@ -353,7 +374,7 @@ export default function GamesPage() {
               </CardContent>
             </Card>
           ))}
-          
+
           {filteredGames.length === 0 && (
             <div className="col-span-full py-12 text-center text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 border-dashed">
               No games found in this view.
@@ -374,6 +395,12 @@ export default function GamesPage() {
         open={!!selectedGame}
         onOpenChange={(open) => !open && setSelectedGame(null)}
         game={selectedGame}
+      />
+
+      <GameParticipantsModal
+        open={!!selectedParticipantsGame}
+        onOpenChange={(open) => !open && setSelectedParticipantsGame(null)}
+        game={selectedParticipantsGame}
       />
     </div>
   )

@@ -9,7 +9,7 @@ import { mockAllTransactions } from "@/lib/mock-data"
 import { Search, Filter, TrendingUp, TrendingDown } from "lucide-react"
 import { format } from "date-fns"
 
-export default function TransactionsPage() {
+export default function WalletManagementPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -47,8 +47,8 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
-        <p className="text-muted-foreground mt-1">View and manage all platform transactions</p>
+        <h1 className="text-3xl font-bold tracking-tight">Wallet Management</h1>
+        <p className="text-muted-foreground mt-1">View and manage all platform wallet transactions</p>
       </div>
 
       {/* Summary Cards */}

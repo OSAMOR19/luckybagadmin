@@ -42,7 +42,7 @@ export function canAccessRoute(role: UserRole, route: string): boolean {
     "/dashboard": "view_dashboard",
     "/users": "view_users",
     "/games": "view_games",
-    "/transactions": "view_transactions",
+    "/wallet-management": "view_transactions",
     "/admins": "view_admins",
     "/settings": "view_settings",
   }

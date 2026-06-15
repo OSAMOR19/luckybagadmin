@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   Sheet,
   SheetContent,
@@ -10,7 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { User } from "@/types"
 import { format } from "date-fns"
-import { CheckCircle, Clock, Edit2, User as UserIcon, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import { CheckCircle, Clock, Edit2, User as UserIcon, ArrowUpRight, ArrowDownLeft, Gamepad2 } from "lucide-react"
+import { mockGames } from "@/lib/mock-data"
+import { DrawResultsModal } from "@/components/draw-results-modal"
 
 interface UserProfileSheetProps {
   user: User | null
@@ -20,6 +23,9 @@ interface UserProfileSheetProps {
 }
 
 export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: UserProfileSheetProps) {
+  const [selectedGame, setSelectedGame] = useState<any>(null)
+  const [isDrawModalOpen, setIsDrawModalOpen] = useState(false)
+
   if (!user) return null
 
   const formatCurrency = (amount: number) => {
@@ -35,8 +41,9 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto bg-slate-50 border-l border-slate-200">
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="sm:max-w-md overflow-y-auto bg-slate-50 border-l border-slate-200">
         <SheetHeader className="pb-6 mb-6 border-b border-slate-200/60 pt-4">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
@@ -150,8 +157,51 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
               </div>
             </div>
           </div>
+
+          {/* Game Participation Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <h3 className="text-sm font-bold text-slate-900">Game Participation</h3>
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">
+                {mockGames.slice(0, 3).length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {mockGames.slice(0, 3).map((game) => (
+                <div key={game.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Gamepad2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{game.title}</p>
+                      <p className="text-[10px] font-medium text-slate-400 mt-0.5">{game.id.replace('game_', 'LBG GM ')}</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-7 text-xs text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => {
+                      setSelectedGame(game)
+                      setIsDrawModalOpen(true)
+                    }}
+                  >
+                    Results
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
+    
+    <DrawResultsModal
+      open={isDrawModalOpen}
+      onOpenChange={setIsDrawModalOpen}
+      game={selectedGame}
+    />
+  </>
   )
 }

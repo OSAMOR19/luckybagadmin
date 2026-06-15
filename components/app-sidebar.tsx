@@ -1,25 +1,25 @@
 "use client"
 
 import type * as React from "react"
-import { LayoutDashboard, Users, Gamepad2, Receipt, Shield, Settings } from "lucide-react"
+import { LayoutDashboard, Users, Gamepad2, Receipt, Shield, Settings, Wallet, LogOut } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/lib/auth-context"
+import { useAuthStore } from "@/store/use-auth-store"
 import { canAccessRoute } from "@/lib/rbac"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth()
+  const { admin: user, logout } = useAuthStore()
 
   const navItems = [
     {
@@ -39,9 +39,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: Gamepad2,
     },
     {
-      title: "Transactions",
-      url: "/transactions",
-      icon: Receipt,
+      title: "Wallet Management",
+      url: "/wallet-management",
+      icon: Wallet,
     },
     {
       title: "Admins",
@@ -75,10 +75,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarMenu>
+            {navItems.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title} isActive={item.isActive}>
+                  <a href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={logout} className="w-full justify-start text-red-500">
+              <LogOut />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
