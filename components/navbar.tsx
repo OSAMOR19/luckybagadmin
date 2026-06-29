@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PasswordManagementModal } from "@/components/password-management-modal"
 import { NotificationsSheet } from "@/components/notifications-sheet"
+import { MobileNav } from "@/components/mobile-nav"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +18,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuthStore } from "@/store/use-auth-store"
 import { LogOut, User, Search, Bell } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { mockActivityFeed } from "@/lib/mock-data"
 import { formatDistanceToNow } from "date-fns"
+import { Activity } from "@/types"
+
+const mockActivityFeed: Activity[] = []
 
 export function Navbar() {
   const router = useRouter()
@@ -39,8 +42,9 @@ export function Navbar() {
       .toUpperCase() || "AD"
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 md:px-6">
       <div className="flex items-center gap-4">
+        <MobileNav />
         <h2 className="text-lg font-semibold text-card-foreground whitespace-nowrap">Admin Portal</h2>
         <div className="hidden md:block h-6 w-px bg-border mx-2"></div>
         <div className="hidden md:flex relative w-80 lg:w-96 items-center">

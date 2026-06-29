@@ -42,7 +42,7 @@ export function CreditDebitModal({ open, onOpenChange, type, userId, userName, o
 
       toast({
         title: `${type === "credit" ? "Credit" : "Debit"} successful`,
-        description: `${type === "credit" ? "Added" : "Deducted"} $${amount} ${type === "credit" ? "to" : "from"} ${userName}'s account`,
+        description: `${type === "credit" ? "Added" : "Deducted"} ₦${amount} ${type === "credit" ? "to" : "from"} ${userName}'s account`,
       })
 
       onSuccess()
@@ -72,7 +72,7 @@ export function CreditDebitModal({ open, onOpenChange, type, userId, userName, o
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
+              <Label htmlFor="amount">Amount (NGN)</Label>
               <Input
                 id="amount"
                 type="number"

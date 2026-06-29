@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import { useState, useEffect } from "react"
 import {
   Dialog,
@@ -12,44 +14,54 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { User } from "@/types"
-import { Wallet, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import { Wallet, ArrowUpRight, ArrowDownLeft, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { usersApi } from "@/lib/api"
 
 interface WalletAdjustmentModalProps {
   user: User | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function WalletAdjustmentModal({ user, open, onOpenChange }: WalletAdjustmentModalProps) {
+export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: WalletAdjustmentModalProps) {
   const [type, setType] = useState<"credit" | "debit">("credit")
   const [amount, setAmount] = useState("")
   const [reason, setReason] = useState("")
+  const [otp, setOtp] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (open) {
       setType("credit")
       setAmount("")
       setReason("")
+      setOtp("")
     }
   }, [open])
 
   if (!user) return null
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
     }).format(val)
+
+    return (
+      <span className="inline-flex items-center">
+        <Image src="/naira1.png" alt="₦" width={24} height={24} className="mr-[2px] object-contain" />
+        {formattedAmount}
+      </span>
+    )
   }
 
   const formatUID = (id: string) => {
-    return id.replace("user_", "LBG-")
+    return id.startsWith("LBG-") ? id : id.replace("user_", "LBG-")
   }
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       toast.error("Please enter a valid amount")
       return
@@ -58,19 +70,48 @@ export function WalletAdjustmentModal({ user, open, onOpenChange }: WalletAdjust
       toast.error("Please provide a reason for the adjustment")
       return
     }
+    if (!otp.trim()) {
+      toast.error("Please enter the OTP")
+      return
+    }
 
-    // Success action
-    onOpenChange(false)
-    if (type === "credit") {
-      toast.success(`Balance credited — $${amount} added to wallet`, {
-        style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
-      })
-    } else {
-      toast.success(`Balance debited — $${amount} removed from wallet`, {
-        style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
-      })
+    try {
+      setIsSubmitting(true)
+      
+      let response;
+      if (type === "credit") {
+        response = await usersApi.creditUser(user.id, Number(amount), otp)
+      } else {
+        response = await usersApi.debitUser(user.id, Number(amount), otp)
+      }
+      
+      onOpenChange(false)
+      
+      const newBalance = (response as any)?.data?.result?.["wallet Balance"]
+      const balanceText = newBalance !== undefined ? ` New balance: ₦${newBalance}` : ''
+      
+      if (type === "credit") {
+        toast.success(`Balance credited — ₦${amount} added to wallet.${balanceText}`, {
+          style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
+        })
+      } else {
+        toast.success(`Balance debited — ₦${amount} removed from wallet.${balanceText}`, {
+          style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
+        })
+      }
+      
+      if (onSuccess) {
+        onSuccess()
+      }
+    } catch (error: any) {
+      console.error("Wallet adjustment failed", error)
+      toast.error(error?.message || "Failed to adjust wallet balance. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
+
+  const isFormValid = Boolean(amount) && !isNaN(Number(amount)) && Number(amount) > 0 && reason.trim() !== "" && otp.trim() !== "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,9 +165,11 @@ export function WalletAdjustmentModal({ user, open, onOpenChange }: WalletAdjust
 
           {/* Amount Input */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-900">Amount (USD)</label>
+            <label className="text-sm font-semibold text-slate-900">Amount (NGN)</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium flex items-center justify-center">
+                <Image src="/naira1.png" alt="₦" width={14} height={14} className="object-contain opacity-50" />
+              </span>
               <Input
                 type="number"
                 placeholder="0.00"
@@ -135,6 +178,18 @@ export function WalletAdjustmentModal({ user, open, onOpenChange }: WalletAdjust
                 className="pl-8 bg-white border-slate-200 focus-visible:ring-emerald-500"
               />
             </div>
+          </div>
+
+          {/* OTP Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900">OTP <span className="text-rose-500">*</span></label>
+            <Input
+              type="text"
+              placeholder="Enter OTP code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="bg-white border-slate-200 focus-visible:ring-emerald-500"
+            />
           </div>
 
           {/* Reason Input */}
@@ -152,19 +207,22 @@ export function WalletAdjustmentModal({ user, open, onOpenChange }: WalletAdjust
         </div>
 
         <DialogFooter className="mt-8 gap-3 sm:space-x-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-200 text-slate-600 hover:bg-slate-50">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-200 text-slate-600 hover:bg-slate-50" disabled={isSubmitting}>
             Cancel
           </Button>
           <Button 
             onClick={handleApply}
+            disabled={isSubmitting || !isFormValid}
             className={cn(
-              "font-medium text-white shadow-sm",
-              type === "credit" 
-                ? "bg-emerald-500 hover:bg-emerald-600" 
-                : "bg-rose-500 hover:bg-rose-600"
+              "font-medium shadow-sm min-w-[150px] transition-colors",
+              (!isFormValid || isSubmitting)
+                ? "bg-slate-200 text-slate-400 pointer-events-none opacity-80"
+                : type === "credit" 
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
+                  : "bg-rose-500 hover:bg-rose-600 text-white"
             )}
           >
-            Apply Balance Update
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply Balance Update"}
           </Button>
         </DialogFooter>
       </DialogContent>

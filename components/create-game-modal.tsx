@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import type React from "react"
 import { useState } from "react"
 import {
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/accordion"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, CalendarIcon, Check } from "lucide-react"
+import { gamesApi } from "@/lib/api"
 
 interface CreateGameModalProps {
   open: boolean
@@ -56,8 +59,21 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
     setIsLoading(true)
 
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const payload = {
+        name: formData.title,
+        amount: formData.prizePool.toString(),
+        draw_interval: formData.interval === "weekly" ? 168 : (parseInt(formData.interval) || 24),
+        winning_percentage: formData.winningPercentage,
+        max_winners: formData.maxWinners,
+        weighted_distribution: formData.weightedDistribution,
+        draw_time: new Date(formData.drawDateTime).toISOString(),
+      }
+      
+      const response: any = await gamesApi.createGame(payload)
+      
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to create game")
+      }
 
       toast({
         className: "bg-emerald-50 border-emerald-200 text-emerald-800 px-4 py-3 shadow-md",
@@ -82,10 +98,10 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
         drawDateTime: "",
         weightedDistribution: false,
       })
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Failed to create game",
-        description: "Please try again",
+        description: error?.message || "Please try again",
         variant: "destructive",
       })
     } finally {
@@ -116,9 +132,11 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="prizePool">Prize Amount (USD) <span className="text-red-500">*</span></Label>
+              <Label htmlFor="prizePool">Prize Amount (NGN) <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center justify-center">
+                  <Image src="/naira1.png" alt="₦" width={14} height={14} className="object-contain opacity-50" />
+                </span>
                 <Input
                   id="prizePool"
                   type="number"

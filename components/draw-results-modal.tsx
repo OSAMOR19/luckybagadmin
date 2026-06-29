@@ -17,13 +17,45 @@ interface DrawResultsModalProps {
   game: Game | null
 }
 
-const mockDrawResults = [
-  { id: "1", timestamp: "2026-05-31 20:00", ticket: "TKT-88421", uid: "LBG-33014411", amount: "$5,000" },
-  { id: "2", timestamp: "2026-05-24 20:00", ticket: "TKT-71209", uid: "LBG-11874422", amount: "$5,000" },
-  { id: "3", timestamp: "2026-05-17 20:00", ticket: "TKT-55830", uid: "LBG-33011100", amount: "$5,000" },
-]
+import { useState, useEffect } from "react"
+import { gamesApi } from "@/lib/api"
 
 export function DrawResultsModal({ open, onOpenChange, game }: DrawResultsModalProps) {
+  const [results, setResults] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    if (open && game) {
+      setIsLoading(true)
+      gamesApi.getResults(game.id)
+        .then((res: any) => {
+          if (res.status === "success") {
+            // Support both results and draws fields just in case
+            const dataResults = res.data?.results || res.data?.draws || res.data || [];
+            if (Array.isArray(dataResults)) {
+              setResults(dataResults)
+              setMessage("")
+            } else if (dataResults?.message) {
+              setResults([])
+              setMessage(dataResults.message)
+            } else {
+              setResults([])
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching results", err)
+          setResults([])
+          setMessage(`Failed to load results: ${err.message || "Unknown error"}`)
+        })
+        .finally(() => setIsLoading(false))
+    } else {
+      setResults([])
+      setMessage("")
+    }
+  }, [open, game])
+
   if (!game) return null
 
   const gameIdDisplay = game.id.replace('game_', 'LBG GM ')
@@ -48,18 +80,30 @@ export function DrawResultsModal({ open, onOpenChange, game }: DrawResultsModalP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockDrawResults.map((result) => (
-                <TableRow key={result.id}>
-                  <TableCell className="font-mono text-xs">{result.timestamp}</TableCell>
-                  <TableCell className="font-medium text-sm">{result.ticket}</TableCell>
-                  <TableCell>
-                    <Link href={`/users/${result.uid}`} className="text-blue-600 hover:underline text-sm font-mono">
-                      {result.uid}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-green-600 font-bold text-sm">{result.amount}</TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4">Loading...</TableCell>
                 </TableRow>
-              ))}
+              ) : results.length > 0 ? (
+                results.map((result, i) => (
+                  <TableRow key={result.id || i}>
+                    <TableCell className="font-mono text-xs">{result.timestamp || result.created_at || "N/A"}</TableCell>
+                    <TableCell className="font-medium text-sm">{result.ticket || result.ticket_number || "N/A"}</TableCell>
+                    <TableCell>
+                      <Link href={`/users/${result.uid || result.user_id}`} className="text-blue-600 hover:underline text-sm font-mono">
+                        {result.uid || result.user_id || "Unknown"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-green-600 font-bold text-sm">{result.amount || result.prize || result.prize_amount || "N/A"}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    {message || "No draw results found."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

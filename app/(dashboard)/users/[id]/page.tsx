@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -61,11 +63,16 @@ export default function UserDetailPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
     }).format(amount)
+    
+    return (
+      <span className="inline-flex items-center">
+        <Image src="/naira1.png" alt="₦" width={18} height={18} className="mr-[2px] object-contain" />
+        {formattedAmount}
+      </span>
+    )
   }
 
   const userTransactions = mockRecentActivity.filter((t) => t.userId === userId)

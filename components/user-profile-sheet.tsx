@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import { useState } from "react"
 import {
   Sheet,
@@ -12,8 +14,10 @@ import { Button } from "@/components/ui/button"
 import { User } from "@/types"
 import { format } from "date-fns"
 import { CheckCircle, Clock, Edit2, User as UserIcon, ArrowUpRight, ArrowDownLeft, Gamepad2 } from "lucide-react"
-import { mockGames } from "@/lib/mock-data"
 import { DrawResultsModal } from "@/components/draw-results-modal"
+import { Game } from "@/types"
+
+const mockGames: Game[] = []
 
 interface UserProfileSheetProps {
   user: User | null
@@ -29,11 +33,16 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
   if (!user) return null
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
     }).format(amount)
+    
+    return (
+      <span className="inline-flex items-center">
+        <Image src="/naira1.png" alt="₦" width={18} height={18} className="mr-[2px] object-contain" />
+        {formattedAmount}
+      </span>
+    )
   }
 
   const formatUID = (id: string) => {
@@ -140,7 +149,9 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
                     <p className="text-[10px] font-medium text-slate-400 mt-0.5">2026-05-28 • TXN-00191</p>
                   </div>
                 </div>
-                <span className="text-sm font-bold text-emerald-600">+$500</span>
+                <span className="text-sm font-bold text-emerald-600 inline-flex items-center">
+                  +<Image src="/naira1.png" alt="₦" width={12} height={12} className="mx-[2px] object-contain" />500
+                </span>
               </div>
 
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -153,7 +164,9 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
                     <p className="text-[10px] font-medium text-slate-400 mt-0.5">2026-03-22 • TXN-00088</p>
                   </div>
                 </div>
-                <span className="text-sm font-bold text-rose-600">-$1,200</span>
+                <span className="text-sm font-bold text-rose-600 inline-flex items-center">
+                  -<Image src="/naira1.png" alt="₦" width={12} height={12} className="mx-[2px] object-contain" />1,200
+                </span>
               </div>
             </div>
           </div>

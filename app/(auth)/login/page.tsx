@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useAuthStore } from "@/store/use-auth-store"
 import { Loader2, ShieldCheck, Eye, EyeOff } from "lucide-react"
+import { authApi } from "@/lib/api"
+import type { Admin } from "@/types"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -24,49 +26,44 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
     try {
-      // Mock successful login with role based on email
-      const mockAdmin = {
-        id: "1",
-        email,
-        name: email
-          .split("@")[0]
-          .replace(".", " ")
-          .replace(/\b\w/g, (l) => l.toUpperCase()),
-        role: "super_admin" as const,
-        isActive: true,
-        createdAt: new Date().toISOString(),
+      const response = await authApi.login(email, password)
+      
+      if (response.status === "success" && response.data) {
+        console.log("Login successful. Full response data:", response.data);
+        const { token, user_details, admin_details } = response.data
+        const details = admin_details || user_details || {}
+        
+        // Map the API user details to the frontend Admin model
+        const adminUser: Admin = {
+          id: details.admin_id || details.uid || String(details.id || "admin"),
+          email: details.email || email,
+          name: details.fullname || "Admin",
+          role: details.role || "super_admin", // Use provided role or default
+          isActive: true,
+          createdAt: details.createdAt || new Date().toISOString(),
+        }
+
+        login(adminUser, token)
+
+        toast({
+          title: "Login successful",
+          description: "Welcome to LuckyBag Admin Portal",
+        })
+
+        router.push("/dashboard")
+      } else {
+        throw new Error(response.message || "Invalid response from server")
       }
-      const mockToken = "mock-jwt-token-" + Date.now()
-
-      login(mockAdmin, mockToken)
-
-      toast({
-        title: "Login successful",
-        description: "Welcome to LuckyBag Admin Portal",
-      })
-
-      router.push("/dashboard")
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Login failed",
-        description: "Invalid email or password",
+        description: error.message || "Invalid email or password",
         variant: "destructive",
       })
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleQuickLogin = () => {
-    setEmail("super@luckybag.io")
-    setPassword("admin123")
-    setTimeout(() => {
-      const form = document.querySelector("form") as HTMLFormElement
-      form?.requestSubmit()
-    }, 100)
   }
 
   return (
@@ -85,11 +82,11 @@ export default function LoginPage() {
         <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[13px] font-medium text-slate-700">Email Address</Label>
+              <Label htmlFor="email" className="text-[13px] font-medium text-slate-700">Email Address or Phone Number</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="Enter text..."
+                type="text"
+                placeholder="Enter email or phone number"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -100,7 +97,10 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[13px] font-medium text-slate-700">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-[13px] font-medium text-slate-700">Password</Label>
+                <a href="/forgot-password" className="text-[13px] font-medium text-[#2563eb] hover:text-blue-700 hover:underline">Forgot password?</a>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -141,12 +141,6 @@ export default function LoginPage() {
               </Button>
             </div>
           </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-[13px] text-slate-500">
-              Use <button type="button" onClick={handleQuickLogin} className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] font-medium hover:bg-slate-200 transition-colors border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">super@luckybag.io</button> for Super Admin access
-            </p>
-          </div>
         </div>
       </div>
       
