@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { KeyRound, Eye, EyeOff } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { authApi } from "@/lib/api"
 
 interface PasswordManagementModalProps {
   open: boolean
@@ -26,15 +28,62 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSave = () => {
-    // Add logic here to save the new password
-    console.log("Password changed")
-    onOpenChange(false)
-    // reset state
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
+  const { toast } = useToast()
+
+  const handleSave = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Passwords do not match",
+        description: "Your new password and confirmation password must match.",
+      })
+      return
+    }
+
+    if (!currentPassword || !newPassword) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Please fill in all password fields.",
+      })
+      return
+    }
+
+    setIsLoading(true)
+    console.log("Initiating password change with current password length:", currentPassword.length)
+    try {
+      const response = await authApi.changePassword(currentPassword, newPassword)
+      console.log("Password change successful. Response:", response)
+      
+      if (response.status === "success") {
+        toast({
+          title: "Password changed successfully",
+          description: response.message || "Your password has been updated.",
+        })
+        onOpenChange(false)
+        // reset state
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Failed to change password",
+          description: response.message || "An error occurred while changing your password.",
+        })
+      }
+    } catch (error: any) {
+      console.error("Password change failed. Error:", error)
+      toast({
+        variant: "destructive",
+        title: "Failed to change password",
+        description: error.message || "An error occurred while changing your password.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -120,7 +169,9 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Change Password</Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Changing..." : "Change Password"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

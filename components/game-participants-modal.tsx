@@ -17,13 +17,44 @@ interface GameParticipantsModalProps {
   game: Game | null
 }
 
-const mockParticipants = [
-  { id: "1", timestamp: "2026-05-30 14:22", ticket: "TKT-88421", uid: "LBG-33014411", name: "Devon Brooks" },
-  { id: "2", timestamp: "2026-05-30 15:05", ticket: "TKT-71209", uid: "LBG-11874422", name: "Priya Sharma" },
-  { id: "3", timestamp: "2026-05-31 09:12", ticket: "TKT-55830", uid: "LBG-33011100", name: "Marcus Williams" },
-]
+import { useState, useEffect } from "react"
+import { gamesApi } from "@/lib/api"
 
 export function GameParticipantsModal({ open, onOpenChange, game }: GameParticipantsModalProps) {
+  const [participants, setParticipants] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    if (open && game) {
+      setIsLoading(true)
+      gamesApi.getDraws(game.id)
+        .then((res: any) => {
+          if (res.status === "success") {
+            const dataDraws = res.data?.draws || res.data || [];
+            if (Array.isArray(dataDraws)) {
+              setParticipants(dataDraws)
+              setMessage("")
+            } else if (dataDraws?.message) {
+              setParticipants([])
+              setMessage(dataDraws.message)
+            } else {
+              setParticipants([])
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching participants", err)
+          setParticipants([])
+          setMessage("Failed to load participants")
+        })
+        .finally(() => setIsLoading(false))
+    } else {
+      setParticipants([])
+      setMessage("")
+    }
+  }, [open, game])
+
   if (!game) return null
 
   const gameIdDisplay = game.id.replace('game_', 'LBG GM ')
@@ -48,18 +79,30 @@ export function GameParticipantsModal({ open, onOpenChange, game }: GameParticip
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockParticipants.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs">{p.timestamp}</TableCell>
-                  <TableCell className="font-medium text-sm">{p.ticket}</TableCell>
-                  <TableCell>
-                    <Link href={`/users/${p.uid.replace('LBG-', 'user_')}`} className="text-blue-600 hover:underline text-sm font-mono">
-                      {p.uid}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm">{p.name}</TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4">Loading...</TableCell>
                 </TableRow>
-              ))}
+              ) : participants.length > 0 ? (
+                participants.map((p, i) => (
+                  <TableRow key={p.id || i}>
+                    <TableCell className="font-mono text-xs">{p.timestamp || p.created_at || "N/A"}</TableCell>
+                    <TableCell className="font-medium text-sm">{p.ticket || p.ticket_number || "N/A"}</TableCell>
+                    <TableCell>
+                      <Link href={`/users/${(p.uid || p.user_id || "unknown").replace('LBG-', 'user_')}`} className="text-blue-600 hover:underline text-sm font-mono">
+                        {p.uid || p.user_id || "Unknown"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-sm">{p.name || p.username || "N/A"}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    {message || "No participants found."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

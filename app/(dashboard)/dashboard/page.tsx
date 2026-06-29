@@ -1,11 +1,14 @@
 "use client"
 
+import Image from "next/image"
+
 import { StatCard } from "@/components/ui/stat-card"
 import { ChartCard } from "@/components/ui/chart-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, UserCheck, DollarSign, Clock, Gamepad2, TrendingUp, TrendingDown, CheckCircle2, Wallet, AlertTriangle } from "lucide-react"
-import { mockDashboardMetrics, mockActivityFeed, mockGames, mockChartData } from "@/lib/mock-data"
+import { mockDashboardMetrics, mockActivityFeed, mockGames, mockChartData } from "../../../lib/mock-data"
+import { Activity, Game } from "../../../types"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Legend } from "recharts"
 import { formatDistanceToNow, format } from "date-fns"
 
@@ -13,11 +16,16 @@ export default function DashboardPage() {
   const metrics = mockDashboardMetrics
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
     }).format(amount)
+    
+    return (
+      <span className="inline-flex items-center">
+        <Image src="/naira1.png" alt="₦" width={18} height={18} className="mr-[2px] object-contain" />
+        {formattedAmount}
+      </span>
+    )
   }
 
   return (
@@ -104,8 +112,8 @@ export default function DashboardPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
               <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
-              <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
+              <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
+              <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "var(--card)",
@@ -135,7 +143,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex flex-col">
-              {mockActivityFeed.map((activity) => {
+              {mockActivityFeed.map((activity: Activity) => {
                 let Icon = CheckCircle2
                 let iconColorClass = "text-emerald-500 bg-emerald-50"
 
@@ -168,7 +176,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="ml-4 shrink-0 text-right">
-                      <p className="text-xs font-medium text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground" suppressHydrationWarning>
                         {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                       </p>
                     </div>
@@ -187,7 +195,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex flex-col">
-              {mockGames.filter(g => g.status === 'upcoming' || g.status === 'live').map((game) => (
+              {mockGames.filter((g: Game) => g.status === 'upcoming' || g.status === 'live').map((game: Game) => (
                 <div
                   key={game.id}
                   className="flex items-center justify-between border-b border-border/40 py-3 last:border-0"
@@ -195,7 +203,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{game.title}</p>
                     <p className="text-[13px] font-mono text-muted-foreground uppercase">{game.id.replace('_', '-')}</p>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5 mt-1 text-xs font-medium text-muted-foreground" suppressHydrationWarning>
                       <Clock className="h-3.5 w-3.5" />
                       {format(new Date(game.startTime), "MMM dd · HH:mm")}
                     </div>

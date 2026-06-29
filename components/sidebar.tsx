@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-const navigationSections = [
+export const navigationSections = [
   {
     title: "Overview",
     items: [
@@ -85,7 +85,7 @@ export function Sidebar() {
   const { admin, logout } = useAuthStore()
 
   return (
-    <div className="flex h-full w-72 flex-col bg-white border-r border-gray-200 shadow-sm">
+    <div className="hidden md:flex h-full w-72 flex-col bg-white border-r border-gray-200 shadow-sm shrink-0">
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent px-6 py-8 border-b border-gray-200">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">

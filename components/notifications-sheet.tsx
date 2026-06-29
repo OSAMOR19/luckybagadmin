@@ -7,8 +7,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { mockActivityFeed } from "@/lib/mock-data"
 import { formatDistanceToNow } from "date-fns"
+import { Activity } from "@/types"
+
+const mockActivityFeed: Activity[] = []
 import { Bell } from "lucide-react"
 
 interface NotificationsSheetProps {
