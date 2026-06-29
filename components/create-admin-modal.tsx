@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
 import type { UserRole } from "@/types"
+import { adminsApi } from "@/lib/api"
 
 interface CreateAdminModalProps {
   open: boolean
@@ -31,7 +32,7 @@ export function CreateAdminModal({ open, onOpenChange, onSuccess }: CreateAdminM
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "support_admin" as UserRole,
+    role: "admin" as UserRole,
     password: "",
   })
 
@@ -40,21 +41,38 @@ export function CreateAdminModal({ open, onOpenChange, onSuccess }: CreateAdminM
     setIsLoading(true)
 
     try {
-      // Mock API call - replace with actual API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log("Submitting admin data:", {
+        fullname: formData.name,
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        password: formData.password
+      });
+
+      // Call the actual API
+      const response = await adminsApi.createAdmin({
+        fullname: formData.name,
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        password: formData.password
+      }) as any;
+
+      console.log("Create admin response:", response);
 
       toast({
         title: "Admin created successfully",
-        description: `${formData.name} has been added as ${formData.role.replace("_", " ")}`,
+        description: response?.message || `${formData.email} has been added as ${formData.role.replace("_", " ")}`,
       })
 
       onSuccess()
       onOpenChange(false)
       setFormData({ name: "", email: "", role: "support_admin", password: "" })
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Create admin error:", error);
       toast({
         title: "Failed to create admin",
-        description: "Please try again",
+        description: error?.message || "Please try again",
         variant: "destructive",
       })
     } finally {
@@ -103,10 +121,7 @@ export function CreateAdminModal({ open, onOpenChange, onSuccess }: CreateAdminM
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
-                  <SelectItem value="game_manager">Game Manager</SelectItem>
-                  <SelectItem value="user_manager">User Manager</SelectItem>
-                  <SelectItem value="finance_admin">Finance Admin</SelectItem>
-                  <SelectItem value="support_admin">Support Admin</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

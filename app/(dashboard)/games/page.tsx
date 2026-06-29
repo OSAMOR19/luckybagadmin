@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import Image from "next/image"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,10 +20,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { mockGames } from "@/lib/mock-data"
-import { Plus, Search, Play, Square, Users, Calendar, Trophy, LayoutGrid, List, Eye, MoreHorizontal } from "lucide-react"
+import { Plus, Search, Play, Square, Users, Calendar, Trophy, LayoutGrid, List, Eye, MoreHorizontal, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { gamesApi } from "@/lib/api"
+import { Game } from "@/types"
 
 type ViewType = "grid" | "list"
 type FilterTab = "all" | "active" | "upcoming" | "past"
@@ -29,27 +33,83 @@ type FilterTab = "all" | "active" | "upcoming" | "past"
 export default function GamesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [games, setGames] = useState(mockGames)
+  const [games, setGames] = useState<Game[]>([])
   const [viewType, setViewType] = useState<ViewType>("list")
   const [activeTab, setActiveTab] = useState<FilterTab>("all")
-  const [selectedGame, setSelectedGame] = useState<typeof games[0] | null>(null)
-  const [selectedParticipantsGame, setSelectedParticipantsGame] = useState<typeof games[0] | null>(null)
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null)
+  const [selectedParticipantsGame, setSelectedParticipantsGame] = useState<Game | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        console.log("Fetching games...")
+        const response = await gamesApi.fetchGames()
+        console.log("Fetch games response:", response)
+        if (response.status === "success") {
+          const gamesData = Array.isArray(response.data) ? response.data : (response.data?.games || []);
+          const formattedGames: Game[] = gamesData.map((apiGame: any) => ({
+            id: apiGame.game_id || apiGame.id,
+            title: apiGame.name,
+            description: "",
+            startTime: apiGame.created_at,
+            endTime: apiGame.draw_time,
+            prizePool: parseFloat(apiGame.amount),
+            status: apiGame.status === "active" ? "live" : apiGame.status,
+            participants: 0,
+            interval: apiGame.draw_interval?.toString(),
+            winPercentage: apiGame.winning_percentage,
+            maxWinners: apiGame.max_winners,
+          }))
+          setGames(formattedGames)
+        } else {
+          console.log("Response status was not success:", response)
+        }
+      } catch (error: any) {
+        console.error("Error fetching games:", error)
+        toast({
+          title: "Error loading games",
+          description: error?.message || "Failed to fetch games from the server.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchGames()
+  }, [])
+
   const handleStartGame = async (gameId: string) => {
-    toast({
-      title: "Game started",
-      description: "The game is now live",
-    })
-    setGames(games.map((g) => (g.id === gameId ? { ...g, status: "live" as const } : g)))
+    try {
+      const response: any = await gamesApi.startGame(gameId)
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to start game")
+      }
+      toast({
+        title: "Game started",
+        description: "The game is now live",
+      })
+      setGames(games.map((g) => (g.id === gameId ? { ...g, status: "live" as const } : g)))
+    } catch (error: any) {
+      toast({ title: "Error starting game", description: error?.message || "Failed to start game", variant: "destructive" })
+    }
   }
 
   const handleStopGame = async (gameId: string) => {
-    toast({
-      title: "Game stopped",
-      description: "The game has been ended",
-    })
-    setGames(games.map((g) => (g.id === gameId ? { ...g, status: "completed" as const } : g)))
+    try {
+      const response: any = await gamesApi.stopGame(gameId)
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to stop game")
+      }
+      toast({
+        title: "Game stopped",
+        description: "The game has been ended",
+      })
+      setGames(games.map((g) => (g.id === gameId ? { ...g, status: "completed" as const } : g)))
+    } catch (error: any) {
+      toast({ title: "Error stopping game", description: error?.message || "Failed to stop game", variant: "destructive" })
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -66,11 +126,16 @@ export default function GamesPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
     }).format(amount)
+    
+    return (
+      <span className="inline-flex items-center">
+        <Image src="/naira1.png" alt="₦" width={18} height={18} className="mr-[2px] object-contain" />
+        {formattedAmount}
+      </span>
+    )
   }
 
   // Calculate counts
@@ -219,7 +284,15 @@ export default function GamesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredGames.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    <div className="flex justify-center items-center h-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredGames.length > 0 ? (
                 filteredGames.map((game) => (
                   <TableRow key={game.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
                     <TableCell className="font-mono text-xs text-slate-500">
@@ -299,8 +372,14 @@ export default function GamesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredGames.map((game) => (
-            <Card key={game.id} className="flex flex-col">
+          {isLoading ? (
+            <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 border-dashed">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-400 mb-4" />
+              <p>Loading games...</p>
+            </div>
+          ) : filteredGames.length > 0 ? (
+            filteredGames.map((game) => (
+              <Card key={game.id} className="flex flex-col">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -373,9 +452,8 @@ export default function GamesPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-
-          {filteredGames.length === 0 && (
+            ))
+          ) : (
             <div className="col-span-full py-12 text-center text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 border-dashed">
               No games found in this view.
             </div>
