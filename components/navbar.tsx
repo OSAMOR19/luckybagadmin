@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { PasswordManagementModal } from "@/components/password-management-modal"
 import { NotificationsSheet } from "@/components/notifications-sheet"
 import { MobileNav } from "@/components/mobile-nav"
+import { authApi } from "@/lib/api"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,9 +30,15 @@ export function Navbar() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [isNotificationsSheetOpen, setIsNotificationsSheetOpen] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    router.push("/login")
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error("Logout API failed:", error)
+    } finally {
+      logout()
+      router.push("/login")
+    }
   }
 
   const initials =
@@ -47,14 +54,14 @@ export function Navbar() {
         <MobileNav />
         <h2 className="text-lg font-semibold text-card-foreground whitespace-nowrap">Admin Portal</h2>
         <div className="hidden md:block h-6 w-px bg-border mx-2"></div>
-        <div className="hidden md:flex relative w-80 lg:w-96 items-center">
+        {/* <div className="hidden md:flex relative w-80 lg:w-96 items-center">
           <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search users, games, or IDs..."
             className="w-full bg-secondary/50 pl-9 pr-4 h-9 rounded-md border-0 focus-visible:ring-1 focus-visible:ring-primary shadow-none text-sm"
           />
-        </div>
+        </div> */}
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>

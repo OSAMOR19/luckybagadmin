@@ -30,7 +30,6 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
   const [type, setType] = useState<"credit" | "debit">("credit")
   const [amount, setAmount] = useState("")
   const [reason, setReason] = useState("")
-  const [otp, setOtp] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
       setType("credit")
       setAmount("")
       setReason("")
-      setOtp("")
     }
   }, [open])
 
@@ -70,26 +68,22 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
       toast.error("Please provide a reason for the adjustment")
       return
     }
-    if (!otp.trim()) {
-      toast.error("Please enter the OTP")
-      return
-    }
 
     try {
       setIsSubmitting(true)
-      
+
       let response;
       if (type === "credit") {
-        response = await usersApi.creditUser(user.id, Number(amount), otp)
+        response = await usersApi.creditUser(user.id, Number(amount))
       } else {
-        response = await usersApi.debitUser(user.id, Number(amount), otp)
+        response = await usersApi.debitUser(user.id, Number(amount))
       }
-      
+
       onOpenChange(false)
-      
+
       const newBalance = (response as any)?.data?.result?.["wallet Balance"]
       const balanceText = newBalance !== undefined ? ` New balance: ₦${newBalance}` : ''
-      
+
       if (type === "credit") {
         toast.success(`Balance credited — ₦${amount} added to wallet.${balanceText}`, {
           style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
@@ -99,7 +93,7 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
           style: { color: "#16a34a", borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" }
         })
       }
-      
+
       if (onSuccess) {
         onSuccess()
       }
@@ -111,7 +105,7 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
     }
   }
 
-  const isFormValid = Boolean(amount) && !isNaN(Number(amount)) && Number(amount) > 0 && reason.trim() !== "" && otp.trim() !== "";
+  const isFormValid = Boolean(amount) && !isNaN(Number(amount)) && Number(amount) > 0 && reason.trim() !== "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -180,18 +174,6 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
             </div>
           </div>
 
-          {/* OTP Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-900">OTP <span className="text-rose-500">*</span></label>
-            <Input
-              type="text"
-              placeholder="Enter OTP code"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              className="bg-white border-slate-200 focus-visible:ring-emerald-500"
-            />
-          </div>
-
           {/* Reason Input */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-900">
@@ -210,15 +192,15 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
           <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-200 text-slate-600 hover:bg-slate-50" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleApply}
             disabled={isSubmitting || !isFormValid}
             className={cn(
               "font-medium shadow-sm min-w-[150px] transition-colors",
               (!isFormValid || isSubmitting)
                 ? "bg-slate-200 text-slate-400 pointer-events-none opacity-80"
-                : type === "credit" 
-                  ? "bg-emerald-500 hover:bg-emerald-600 text-white" 
+                : type === "credit"
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                   : "bg-rose-500 hover:bg-rose-600 text-white"
             )}
           >

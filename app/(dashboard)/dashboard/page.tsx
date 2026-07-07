@@ -11,9 +11,37 @@ import { mockDashboardMetrics, mockActivityFeed, mockGames, mockChartData } from
 import { Activity, Game } from "../../../types"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Legend } from "recharts"
 import { formatDistanceToNow, format } from "date-fns"
+import { useState, useEffect } from "react"
+import { usersApi } from "../../../lib/api"
 
 export default function DashboardPage() {
   const metrics = mockDashboardMetrics
+  const [pendingAmount, setPendingAmount] = useState(metrics.pendingWithdrawals)
+  const [creditAmount, setCreditAmount] = useState(metrics.totalRevenue)
+  const [debitAmount, setDebitAmount] = useState(0)
+
+  useEffect(() => {
+    usersApi.fetchWalletMetric("pending").then((res) => {
+      console.log("Pending Metric Response:", res);
+      if (res?.data?.amount !== undefined) {
+        setPendingAmount(res.data.amount)
+      }
+    }).catch(console.error)
+
+    usersApi.fetchWalletMetric("credit").then((res) => {
+      console.log("Credit Metric Response:", res);
+      if (res?.data?.amount !== undefined) {
+        setCreditAmount(res.data.amount)
+      }
+    }).catch(console.error)
+
+    usersApi.fetchWalletMetric("debit").then((res) => {
+      console.log("Debit Metric Response:", res);
+      if (res?.data?.amount !== undefined) {
+        setDebitAmount(res.data.amount)
+      }
+    }).catch(console.error)
+  }, [])
 
   const formatCurrency = (amount: number) => {
     const formattedAmount = new Intl.NumberFormat("en-US", {
@@ -36,7 +64,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title="Total Users"
           value={metrics.totalUsers.toLocaleString()}
@@ -50,14 +78,20 @@ export default function DashboardPage() {
           trend={{ value: 8.2, isPositive: true }}
         />
         <StatCard
-          title="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
+          title="Total Credit"
+          value={formatCurrency(creditAmount)}
           icon={DollarSign}
           trend={{ value: 15.3, isPositive: true }}
         />
         <StatCard
+          title="Total Debit"
+          value={formatCurrency(debitAmount)}
+          icon={Wallet}
+          trend={{ value: -2.4, isPositive: false }}
+        />
+        <StatCard
           title="Pending Withdrawals"
-          value={formatCurrency(metrics.pendingWithdrawals)}
+          value={formatCurrency(pendingAmount)}
           icon={Clock}
           trend={{ value: -5.1, isPositive: false }}
         />

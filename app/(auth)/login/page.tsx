@@ -28,12 +28,12 @@ export default function LoginPage() {
 
     try {
       const response = await authApi.login(email, password)
-      
+
       if (response.status === "success" && response.data) {
         console.log("Login successful. Full response data:", response.data);
         const { token, user_details, admin_details } = response.data
         const details = admin_details || user_details || {}
-        
+
         // Map the API user details to the frontend Admin model
         const adminUser: Admin = {
           id: details.admin_id || details.uid || String(details.id || "admin"),
@@ -91,9 +91,8 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
-                className={`h-11 text-[13px] placeholder:text-slate-400 focus:placeholder-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:border-blue-500 rounded-lg transition-colors ${
-                  email ? "bg-[#e8f0fe] border-blue-200" : "bg-white border-slate-200"
-                }`}
+                className={`h-11 text-[13px] placeholder:text-slate-400 focus:placeholder-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:border-blue-500 rounded-lg transition-colors ${email ? "bg-[#e8f0fe] border-blue-200" : "bg-white border-slate-200"
+                  }`}
               />
             </div>
             <div className="space-y-2">
@@ -110,9 +109,8 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className={`h-11 text-[13px] placeholder:text-slate-400 focus:placeholder-transparent pr-10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:border-blue-500 rounded-lg transition-colors ${
-                    password ? "bg-[#e8f0fe] border-blue-200" : "bg-white border-slate-200"
-                  }`}
+                  className={`h-11 text-[13px] placeholder:text-slate-400 focus:placeholder-transparent pr-10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:border-blue-500 rounded-lg transition-colors ${password ? "bg-[#e8f0fe] border-blue-200" : "bg-white border-slate-200"
+                    }`}
                 />
                 <button
                   type="button"
@@ -123,11 +121,11 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="pt-2">
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-[#2563eb] hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm disabled:bg-[#8cb4f9] disabled:opacity-100 disabled:text-white" 
+              <Button
+                type="submit"
+                className="w-full h-11 bg-[#2563eb] hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm disabled:bg-[#8cb4f9] disabled:opacity-100 disabled:text-white"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -143,7 +141,7 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
-      
+
       {/* Footer */}
       <div className="absolute bottom-8 left-0 w-full text-center">
         <p className="text-[12px] text-slate-400 font-medium">

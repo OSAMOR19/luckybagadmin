@@ -143,7 +143,7 @@ export default function UsersPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 border-r border-slate-300 pr-4 py-1">
           User Directory
         </h1>
-        <div className="relative flex-1 max-w-md">
+        {/* <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Search by UID, name, email, or phone..."
@@ -151,7 +151,7 @@ export default function UsersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-slate-50 border-slate-200"
           />
-        </div>
+        </div> */}
         <div className="text-sm text-slate-500 font-medium">
           <span className="text-slate-900 font-semibold">{filteredUsers.length}</span> users
         </div>
@@ -161,7 +161,7 @@ export default function UsersPage() {
         <Table>
           <TableHeader className="bg-slate-50/50">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="font-medium text-slate-500">UID</TableHead>
+              <TableHead className="font-medium text-slate-500">S/N</TableHead>
               <TableHead className="font-medium text-slate-500">Full Name</TableHead>
               <TableHead className="font-medium text-slate-500">Email</TableHead>
               <TableHead className="font-medium text-slate-500">Phone Number</TableHead>
@@ -180,11 +180,11 @@ export default function UsersPage() {
                 </TableCell>
               </TableRow>
             ) : filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
+              filteredUsers.map((user, index) => (
                 <TableRow key={user.id} className="group hover:bg-slate-50/50">
                   <TableCell>
                     <span className="text-sm font-medium text-primary">
-                      {formatUID(user.id)}
+                      {index + 1}
                     </span>
                   </TableCell>
                   <TableCell>

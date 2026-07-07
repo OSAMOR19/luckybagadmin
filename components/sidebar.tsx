@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { authApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/use-auth-store"
 import {
@@ -82,7 +83,19 @@ export const navigationSections = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { admin, logout } = useAuthStore()
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error("Logout API failed:", error)
+    } finally {
+      logout()
+      router.push("/login")
+    }
+  }
 
   return (
     <div className="hidden md:flex h-full w-72 flex-col bg-white border-r border-gray-200 shadow-sm shrink-0">
@@ -198,7 +211,7 @@ export function Sidebar() {
         </div>
 
         <Button
-          onClick={logout}
+          onClick={handleLogout}
           variant="outline"
           className="w-full justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 bg-transparent"
         >
