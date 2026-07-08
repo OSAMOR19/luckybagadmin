@@ -12,6 +12,15 @@ import { CreateGameModal } from "@/components/create-game-modal"
 import { DrawResultsModal } from "@/components/draw-results-modal"
 import { GameParticipantsModal } from "@/components/game-participants-modal"
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,6 +34,7 @@ import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { gamesApi } from "@/lib/api"
+
 import { Game } from "@/types"
 
 type ViewType = "grid" | "list"
@@ -39,44 +49,72 @@ export default function GamesPage() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [selectedParticipantsGame, setSelectedParticipantsGame] = useState<Game | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        console.log("Fetching games...")
-        const response = await gamesApi.fetchGames()
-        console.log("Fetch games response:", response)
-        if (response.status === "success") {
-          const gamesData = Array.isArray(response.data) ? response.data : (response.data?.games || []);
-          const formattedGames: Game[] = gamesData.map((apiGame: any) => ({
-            id: apiGame.game_id || apiGame.id,
-            title: apiGame.name,
-            description: "",
-            startTime: apiGame.created_at,
-            endTime: apiGame.draw_time,
-            prizePool: parseFloat(apiGame.amount),
-            status: apiGame.status === "active" ? "live" : apiGame.status,
-            participants: 0,
-            interval: apiGame.draw_interval?.toString(),
-            winPercentage: apiGame.winning_percentage,
-            maxWinners: apiGame.max_winners,
-          }))
-          setGames(formattedGames)
-        } else {
-          console.log("Response status was not success:", response)
-        }
-      } catch (error: any) {
-        console.error("Error fetching games:", error)
-        toast({
-          title: "Error loading games",
-          description: error?.message || "Failed to fetch games from the server.",
-          variant: "destructive"
-        })
-      } finally {
-        setIsLoading(false)
+  const fetchGames = async () => {
+    try {
+      setIsLoading(true)
+      console.log("Fetching games and upcoming raffles...")
+
+      const [gamesResponse, upcomingResponse] = await Promise.all([
+        gamesApi.fetchGames().catch(e => ({ status: "error", message: e.message, data: [] })),
+        gamesApi.getUpcomingRaffles().catch(e => ({ status: "error", message: e.message, data: { games: [] } }))
+      ])
+
+      let allGamesData: any[] = []
+
+      if (gamesResponse.status === "success") {
+        allGamesData = [...(Array.isArray(gamesResponse.data) ? gamesResponse.data : (gamesResponse.data?.games || []))]
       }
+
+      if (upcomingResponse.status === "success") {
+        const upcomingGames = upcomingResponse.data?.games || []
+        // Add upcoming games if they aren't already in allGamesData
+        const existingIds = new Set(allGamesData.map(g => g.game_id || g.id))
+        upcomingGames.forEach((g: any) => {
+          if (!existingIds.has(g.game_id || g.id)) {
+            allGamesData.push(g)
+          }
+        })
+      } else if (gamesResponse.status !== "success") {
+        // If both failed, throw error to be caught below
+        throw new Error(gamesResponse.message || "Failed to fetch games data")
+      }
+
+      const formattedGames: Game[] = allGamesData.map((apiGame: any) => {
+        let mappedStatus = apiGame.status === "active" ? "live" : apiGame.status
+        if (mappedStatus === "pending") mappedStatus = "upcoming"
+
+        return {
+          id: apiGame.game_id || apiGame.id,
+          title: apiGame.game_name || apiGame.name,
+          description: "",
+          startTime: apiGame.created_at || new Date().toISOString(),
+          endTime: apiGame.draw_time,
+          prizePool: parseFloat(apiGame.amount),
+          status: mappedStatus,
+          participants: 0,
+          interval: apiGame.draw_interval?.toString(),
+          winPercentage: apiGame.winning_percentage,
+          maxWinners: apiGame.max_winners,
+        }
+      })
+      setGames(formattedGames)
+    } catch (error: any) {
+      console.error("Error fetching games:", error)
+      toast({
+        title: "Error loading games",
+        description: error?.message || "Failed to fetch games from the server.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchGames()
   }, [])
 
@@ -129,7 +167,7 @@ export default function GamesPage() {
     const formattedAmount = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
     }).format(amount)
-    
+
     return (
       <span className="inline-flex items-center">
         <Image src="/naira1.png" alt="₦" width={18} height={18} className="mr-[2px] object-contain" />
@@ -165,6 +203,22 @@ export default function GamesPage() {
     }
   })
 
+  const totalPages = Math.ceil(filteredGames.length / itemsPerPage)
+  const paginatedGames = filteredGames.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    setCurrentPage(1)
+  }
+
+  const handleTabChange = (tab: FilterTab) => {
+    setActiveTab(tab)
+    setCurrentPage(1)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -177,14 +231,14 @@ export default function GamesPage() {
                 ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => setActiveTab("all")}
+            onClick={() => handleTabChange("all")}
           >
             All Games
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "all" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.all}
             </Badge>
           </Button>
-          <Button
+          {/* <Button
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
@@ -198,7 +252,7 @@ export default function GamesPage() {
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "active" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.active}
             </Badge>
-          </Button>
+          </Button> */}
           <Button
             variant="ghost"
             className={cn(
@@ -207,7 +261,7 @@ export default function GamesPage() {
                 ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => setActiveTab("upcoming")}
+            onClick={() => handleTabChange("upcoming")}
           >
             Upcoming Raffles
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "upcoming" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
@@ -222,7 +276,7 @@ export default function GamesPage() {
                 ? "bg-white shadow-sm text-foreground dark:bg-slate-900"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => setActiveTab("past")}
+            onClick={() => handleTabChange("past")}
           >
             Past Results
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "past" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
@@ -243,7 +297,7 @@ export default function GamesPage() {
           <Input
             placeholder="Search games..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 bg-white dark:bg-slate-900"
           />
         </div>
@@ -292,8 +346,8 @@ export default function GamesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredGames.length > 0 ? (
-                filteredGames.map((game) => (
+              ) : paginatedGames.length > 0 ? (
+                paginatedGames.map((game) => (
                   <TableRow key={game.id} className="border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
                     <TableCell className="font-mono text-xs text-slate-500">
                       {game.id.replace('game_', 'LBG-GM-')}
@@ -367,7 +421,7 @@ export default function GamesPage() {
             </TableBody>
           </Table>
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-500">
-            Showing {filteredGames.length} of {games.length} games
+            Showing {paginatedGames.length} of {filteredGames.length} games
           </div>
         </Card>
       ) : (
@@ -377,81 +431,81 @@ export default function GamesPage() {
               <Loader2 className="h-8 w-8 animate-spin text-slate-400 mb-4" />
               <p>Loading games...</p>
             </div>
-          ) : filteredGames.length > 0 ? (
-            filteredGames.map((game) => (
+          ) : paginatedGames.length > 0 ? (
+            paginatedGames.map((game) => (
               <Card key={game.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{game.title}</CardTitle>
-                    <CardDescription className="mt-1">{game.description}</CardDescription>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{game.title}</CardTitle>
+                      <CardDescription className="mt-1">{game.description}</CardDescription>
+                    </div>
+                    <div className={cn("inline-flex items-center px-2 py-1 rounded-full text-xs font-medium gap-1.5 border", getStatusColor(game.status))}>
+                      <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {game.status.toUpperCase()}
+                    </div>
                   </div>
-                  <div className={cn("inline-flex items-center px-2 py-1 rounded-full text-xs font-medium gap-1.5 border", getStatusColor(game.status))}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                    {game.status.toUpperCase()}
+                </CardHeader>
+                <CardContent className="flex-1 space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Start:</span>
+                      <span className="font-medium">{format(new Date(game.startTime), "MMM dd, HH:mm")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">End:</span>
+                      <span className="font-medium">{format(new Date(game.endTime), "MMM dd, HH:mm")}</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Start:</span>
-                    <span className="font-medium">{format(new Date(game.startTime), "MMM dd, HH:mm")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">End:</span>
-                    <span className="font-medium">{format(new Date(game.endTime), "MMM dd, HH:mm")}</span>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Trophy className="h-4 w-4 text-primary" />
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Trophy className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Prize Pool</p>
+                        <p className="text-sm font-semibold">{formatCurrency(game.prizePool)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Prize Pool</p>
-                      <p className="text-sm font-semibold">{formatCurrency(game.prizePool)}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Users className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Participants</p>
+                        <p className="text-sm font-semibold">{game.participants.toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Users className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Participants</p>
-                      <p className="text-sm font-semibold">{game.participants.toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex gap-2 pt-2">
-                  {game.status === "upcoming" && (
-                    <Button size="sm" className="flex-1" onClick={() => handleStartGame(game.id)}>
-                      <Play className="mr-2 h-4 w-4" />
-                      Start Game
+                  <div className="flex gap-2 pt-2">
+                    {game.status === "upcoming" && (
+                      <Button size="sm" className="flex-1" onClick={() => handleStartGame(game.id)}>
+                        <Play className="mr-2 h-4 w-4" />
+                        Start Game
+                      </Button>
+                    )}
+                    {game.status === "live" && (
+                      <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleStopGame(game.id)}>
+                        <Square className="mr-2 h-4 w-4" />
+                        Stop Game
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary dark:bg-primary/10"
+                      onClick={() => setSelectedGame(game)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Results
                     </Button>
-                  )}
-                  {game.status === "live" && (
-                    <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleStopGame(game.id)}>
-                      <Square className="mr-2 h-4 w-4" />
-                      Stop Game
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary dark:bg-primary/10"
-                    onClick={() => setSelectedGame(game)}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Results
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
             ))
           ) : (
             <div className="col-span-full py-12 text-center text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 border-dashed">
@@ -461,11 +515,65 @@ export default function GamesPage() {
         </div>
       )}
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="py-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {[...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                if (
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink 
+                        isActive={currentPage === page}
+                        onClick={() => setCurrentPage(page)}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                }
+                
+                if (page === currentPage - 2 || page === currentPage + 2) {
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                }
+                
+                return null;
+              })}
+
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
       <CreateGameModal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSuccess={() => {
-          // Refresh games list
+          fetchGames()
         }}
       />
 

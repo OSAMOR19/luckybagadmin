@@ -43,12 +43,12 @@ interface CreateGameModalProps {
 export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  
+
   const [formData, setFormData] = useState({
     title: "",
     prizePool: "",
     interval: "24h",
-    winningPercentage: 10,
+    winningPercentage: 60,
     maxWinners: 1,
     drawDateTime: "",
     weightedDistribution: false,
@@ -60,17 +60,16 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
 
     try {
       const payload = {
-        name: formData.title,
+        game_name: formData.title,
         amount: formData.prizePool.toString(),
-        draw_interval: formData.interval === "weekly" ? 168 : (parseInt(formData.interval) || 24),
+        draw_interval: (formData.interval === "weekly" ? 168 : (parseInt(formData.interval) || 24)) * 60,
         winning_percentage: formData.winningPercentage,
         max_winners: formData.maxWinners,
         weighted_distribution: formData.weightedDistribution,
-        draw_time: new Date(formData.drawDateTime).toISOString(),
+        date: formData.drawDateTime,
       }
-      
       const response: any = await gamesApi.createGame(payload)
-      
+
       if (response.status !== "success") {
         throw new Error(response.message || "Failed to create game")
       }
@@ -116,10 +115,10 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
           <SheetTitle>Create New Game</SheetTitle>
           <SheetDescription>Configure game parameters and schedule</SheetDescription>
         </SheetHeader>
-        
+
         <form onSubmit={handleSubmit} className="flex flex-col flex-1">
           <div className="flex-1 p-6 space-y-6">
-            
+
             <div className="space-y-2">
               <Label htmlFor="title">Game Name <span className="text-red-500">*</span></Label>
               <Input
@@ -130,7 +129,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="prizePool">Prize Amount (NGN) <span className="text-red-500">*</span></Label>
               <div className="relative">
@@ -148,11 +147,11 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="interval">Draw Interval</Label>
-              <Select 
-                value={formData.interval} 
+              <Select
+                value={formData.interval}
                 onValueChange={(value) => setFormData({ ...formData, interval: value })}
               >
                 <SelectTrigger id="interval">
@@ -166,7 +165,17 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 </SelectContent>
               </Select>
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="drawDateTime">Valid Until</Label>
+              <Input
+                id="drawDateTime"
+                type="datetime-local"
+                value={formData.drawDateTime}
+                onChange={(e) => setFormData({ ...formData, drawDateTime: e.target.value })}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -180,7 +189,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                   className="[&_[data-slot=slider-range]]:bg-blue-600 [&_[data-slot=slider-thumb]]:border-blue-600 [&_[data-slot=slider-thumb]]:bg-blue-600"
                 />
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label>Max Winners <span className="text-blue-600 font-medium">({formData.maxWinners})</span></Label>
@@ -194,23 +203,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="drawDateTime">Draw Date & Time <span className="text-red-500">*</span></Label>
-              <div className="relative">
-                <Input
-                  id="drawDateTime"
-                  type="datetime-local"
-                  placeholder="dd/mm/yyyy --:--"
-                  value={formData.drawDateTime}
-                  onChange={(e) => setFormData({ ...formData, drawDateTime: e.target.value })}
-                  required
-                  className="pr-10"
-                />
-                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-            
+
+
+
             <div className="flex items-center justify-between py-2">
               <div className="space-y-0.5">
                 <Label className="text-base font-medium">Weighted Distribution</Label>
@@ -221,7 +216,7 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 onCheckedChange={(checked) => setFormData({ ...formData, weightedDistribution: checked })}
               />
             </div>
-            
+
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="advanced" className="border-none">
                 <AccordionTrigger className="bg-slate-50 dark:bg-slate-900 rounded-lg px-4 hover:no-underline">
@@ -232,9 +227,9 @@ export function CreateGameModal({ open, onOpenChange, onSuccess }: CreateGameMod
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-            
+
           </div>
-          
+
           <SheetFooter className="px-6 py-4 border-t mt-auto flex-row justify-end gap-2 sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel

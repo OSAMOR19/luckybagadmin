@@ -54,7 +54,11 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
     setIsLoading(true)
     console.log("Initiating password change with current password length:", currentPassword.length)
     try {
-      const response = await authApi.changePassword(currentPassword, newPassword)
+      const response = await authApi.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      })
       console.log("Password change successful. Response:", response)
       
       if (response.status === "success") {
@@ -108,7 +112,7 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
             <div className="relative">
               <Input
                 type={showCurrentPassword ? "text" : "password"}
-                placeholder="•••••••••••"
+                placeholder="Enter current password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="pr-10"
@@ -129,7 +133,7 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
             <div className="relative">
               <Input
                 type={showNewPassword ? "text" : "password"}
-                placeholder="•••••••••••"
+                placeholder="Enter new password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="pr-10"
@@ -150,7 +154,7 @@ export function PasswordManagementModal({ open, onOpenChange }: PasswordManageme
             <div className="relative">
               <Input
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="•••••••••••"
+                placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pr-10"
