@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { authApi } from "@/lib/api"
+import { authApi, dashboardApi, usersApi, gamesApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/use-auth-store"
+import { useState, useEffect } from "react"
 import {
   LayoutDashboard,
   Gamepad2,
@@ -42,21 +43,21 @@ export const navigationSections = [
         href: "/games",
         icon: Gamepad2,
         color: "bg-purple-500",
-        badge: "12",
+        badge: null,
       },
       {
         name: "Users",
         href: "/users",
         icon: Users,
         color: "bg-green-500",
-        badge: "1.2k",
+        badge: null,
       },
       {
         name: "Wallet Management",
         href: "/wallet-management",
         icon: Wallet,
         color: "bg-orange-500",
-        badge: "45",
+        badge: null,
       },
     ],
   },
@@ -97,6 +98,61 @@ export function Sidebar() {
     }
   }
 
+  const [metrics, setMetrics] = useState({
+    users: 0,
+    games: 0,
+    wallet: 0
+  })
+
+  useEffect(() => {
+    if (!admin) return;
+
+    const parseValue = (res: any) => {
+      if (res?.data === undefined || res?.data === null) return 0;
+      if (typeof res.data === 'number') return res.data;
+      if (typeof res.data === 'string') return parseInt(res.data, 10) || 0;
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data[0]?.amount ?? res.data[0]?.count ?? res.data[0]?.games ?? res.data[0]?.total ?? Object.values(res.data[0] || {})[0] ?? 0;
+      }
+      return res.data.amount ?? res.data.count ?? res.data.total ?? res.data.games ?? Object.values(res.data)[0] ?? 0;
+    };
+
+    dashboardApi.fetchMetric("total-users")
+      .then(res => setMetrics(prev => ({ ...prev, users: parseValue(res) })))
+      .catch(console.error);
+
+    dashboardApi.fetchMetric("games")
+      .then(res => {
+        const val = parseValue(res);
+        if (val > 0) {
+          setMetrics(prev => ({ ...prev, games: val }));
+        } else {
+          // Fallback if metric API is broken
+          gamesApi.fetchGames().then(gRes => {
+            const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+            setMetrics(prev => ({ ...prev, games: list.length }));
+          }).catch(console.error);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        // Fallback on error
+        gamesApi.fetchGames().then(gRes => {
+          const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+          setMetrics(prev => ({ ...prev, games: list.length }));
+        }).catch(console.error);
+      });
+      
+    usersApi.fetchWalletMetric("pending")
+      .then(res => setMetrics(prev => ({ ...prev, wallet: res?.data?.amount || 0 })))
+      .catch(console.error);
+  }, [admin])
+
+  const formatBadge = (num: number) => {
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+    return num.toString()
+  }
+
   return (
     <div className="hidden md:flex h-full w-72 flex-col bg-white border-r border-gray-200 shadow-sm shrink-0">
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent px-6 py-8 border-b border-gray-200">
@@ -123,6 +179,12 @@ export function Sidebar() {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = pathname === item.href
+                
+                let dynamicBadge: string | null = item.badge
+                if (item.name === "Users" && metrics.users > 0) dynamicBadge = formatBadge(metrics.users)
+                if (item.name === "Games" && metrics.games > 0) dynamicBadge = formatBadge(metrics.games)
+                if (item.name === "Wallet Management" && metrics.wallet > 0) dynamicBadge = formatBadge(metrics.wallet)
+
                 return (
                   <Link
                     key={item.name}
@@ -157,7 +219,7 @@ export function Sidebar() {
                     <span className="flex-1">{item.name}</span>
 
                     {/* Badge */}
-                    {item.badge && (
+                    {dynamicBadge && (
                       <Badge
                         variant="secondary"
                         className={cn(
@@ -165,7 +227,7 @@ export function Sidebar() {
                           isActive ? "bg-primary text-white" : "bg-gray-200 text-gray-700",
                         )}
                       >
-                        {item.badge}
+                        {dynamicBadge}
                       </Badge>
                     )}
 

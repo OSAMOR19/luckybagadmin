@@ -20,6 +20,15 @@ import { WalletAdjustmentModal } from "@/components/wallet-adjustment-modal"
 import { User as UserType } from "@/types"
 import { usersApi } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -29,6 +38,9 @@ export default function UsersPage() {
   const [selectedWalletUser, setSelectedWalletUser] = useState<UserType | null>(null)
   const { toast } = useToast()
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const loadUsers = async () => {
@@ -36,40 +48,52 @@ export default function UsersPage() {
       setIsLoading(true)
       setDebugInfo(null)
       
-      // Let it throw if it fails so we can catch it
-      const usersRes = await usersApi.fetchUsers() as any;
+      let allFetchedUsers: any[] = [];
       let balancesRes = null;
-      
       try {
         balancesRes = await usersApi.fetchAllBalances() as any;
       } catch (e) {
-        console.warn("Failed to fetch balances, continuing without them", e);
+        console.warn("Failed to fetch balances", e);
       }
       
-      const rawData = usersRes?.data;
-      let usersArray: any[] = [];
+      // Forcefully fetch first 5 pages concurrently to bypass any unreliable 'next' cursor issues
+      const pageRequests = [1, 2, 3, 4, 5].map(page => 
+        usersApi.fetchUsers(page).catch(err => {
+          console.warn(`Failed to fetch page ${page}`, err);
+          return null;
+        })
+      );
       
-      console.log("----- API RESPONSE DEBUG -----");
-      console.log("Raw usersRes:", usersRes);
-      console.log("Raw balancesRes:", balancesRes);
+      const responses = await Promise.all(pageRequests);
       
-      if (Array.isArray(rawData)) {
-        usersArray = rawData;
-      } else if (rawData?.user_details) {
-        usersArray = Array.isArray(rawData.user_details) ? rawData.user_details : [rawData.user_details];
-      } else if (rawData?.users) {
-        usersArray = Array.isArray(rawData.users) ? rawData.users : [rawData.users];
-      } else if (rawData && typeof rawData === 'object') {
-        // If it's a single object without a wrapper array
-        usersArray = [rawData];
-      }
-
-      console.log("Extracted usersArray:", usersArray);
-      console.log("------------------------------");
-
-      if (usersArray.length === 0) {
-        setDebugInfo(`Raw API Response: ${JSON.stringify(usersRes, null, 2)}`);
-      }
+      responses.forEach((usersRes, index) => {
+        if (!usersRes) return;
+        
+        console.log(`[PAGE ${index + 1}] API RESPONSE DEBUG:`, usersRes);
+        
+        const rawData = (usersRes as any)?.data;
+        let usersArray: any[] = [];
+        
+        if (Array.isArray(rawData)) {
+          usersArray = rawData;
+        } else if (rawData?.data && Array.isArray(rawData.data)) {
+          usersArray = rawData.data;
+        } else if (rawData?.users?.data && Array.isArray(rawData.users.data)) {
+          usersArray = rawData.users.data;
+        } else if (rawData?.user_details) {
+          usersArray = Array.isArray(rawData.user_details) ? rawData.user_details : [rawData.user_details];
+        } else if (rawData?.users) {
+          usersArray = Array.isArray(rawData.users) ? rawData.users : [rawData.users];
+        } else if (rawData && typeof rawData === 'object') {
+          if (rawData.current_page !== undefined || rawData.per_page !== undefined) {
+            usersArray = [];
+          } else {
+            usersArray = [rawData];
+          }
+        }
+        
+        allFetchedUsers = [...allFetchedUsers, ...usersArray];
+      });
       
       const balancesData = balancesRes?.data?.balances?.["wallet Balance"] || []
       const balanceMap = new Map<string, number>()
@@ -77,15 +101,20 @@ export default function UsersPage() {
         balanceMap.set(b.username, b.wallet_balance)
       })
       
-      const mappedUsers = usersArray.map((u: any) => {
-        // Try extracting username from email to match balance username
+      const mappedUsers = allFetchedUsers.map((u: any) => {
         const username = u.email ? u.email.split('@')[0] : ""
+        
+        // Prioritize the balance returned directly on the user object, fallback to balances API
+        const userBalance = u.balance !== undefined && u.balance !== null 
+          ? Number(u.balance) 
+          : (balanceMap.get(username) || 0)
+
         return {
           id: u.uid || String(u.id || Math.random()),
           name: u.fullname || u.name || "Unknown",
           email: u.email || "",
           phone: u.phone_number || u.phone || "",
-          balance: balanceMap.get(username) || 0,
+          balance: userBalance,
           kycStatus: "verified" as const,
           emailVerified: u.email_verified || u.emailVerified || false,
           smsVerified: u.sms_otp_verified || u.smsVerified || false,
@@ -97,7 +126,6 @@ export default function UsersPage() {
       setUsers(mappedUsers)
     } catch (error: any) {
       console.error("Failed to load users", error)
-      setDebugInfo(`API Error: ${error?.message || 'Unknown error'}`);
       toast({
         title: "Error fetching users",
         description: error?.message || "Failed to load users. Please try again later.",
@@ -119,6 +147,14 @@ export default function UsersPage() {
       user.phone.includes(searchQuery) ||
       user.id.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
 
   const formatCurrency = (amount: number) => {
     const formattedAmount = new Intl.NumberFormat("en-US", {
@@ -179,12 +215,12 @@ export default function UsersPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredUsers.length > 0 ? (
-              filteredUsers.map((user, index) => (
+            ) : paginatedUsers.length > 0 ? (
+              paginatedUsers.map((user, index) => (
                 <TableRow key={user.id} className="group hover:bg-slate-50/50">
                   <TableCell>
                     <span className="text-sm font-medium text-primary">
-                      {index + 1}
+                      {startIndex + index + 1}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -271,11 +307,60 @@ export default function UsersPage() {
           </div>
         )}
 
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <p className="text-sm text-slate-500">
-            Showing <span className="font-semibold text-slate-700">{filteredUsers.length}</span> of <span className="font-semibold text-slate-700">{users.length}</span> registered users
-          </p>
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-sm text-slate-500">
+          Showing {paginatedUsers.length} users on this page
         </div>
+      </div>
+
+      <div className="py-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              if (
+                page === 1 || 
+                page === totalPages || 
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationLink 
+                      isActive={currentPage === page}
+                      onClick={() => setCurrentPage(page)}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              }
+              
+              if (page === currentPage - 2 || page === currentPage + 2) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )
+              }
+              
+              return null;
+            })}
+
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
 
       <UserProfileSheet 

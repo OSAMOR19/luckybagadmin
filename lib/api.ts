@@ -94,15 +94,16 @@ export const gamesApi = {
 
 // Users APIs
 export const usersApi = {
-  fetchUsers: () => fetchApi<any>("/admin/users"),
+  fetchUsers: (page: number = 1) => fetchApi<any>(`/admin/users?page=${page}`),
   fetchAllBalances: () => fetchApi<any>("/admin/balances"),
   fetchUserBalances: (userId: string) => fetchApi(`/admin/users-balances?userId=${userId}`),
   fetchWalletHistory: (page: number = 1) => fetchApi<any>(`/admin/wallet/history?page=${page}`),
+  fetchSingleUserWalletHistory: (userId: string, page: number = 1, limit: number = 10) => fetchApi<any>(`/admin/user/${userId}/wallet/history?page=${page}&limit=${limit}`),
   fetchWalletMetric: (type: "pending" | "credit" | "debit") => fetchApi<{ status: string; message: string; data: { amount: number }; next: null }>(`/admin/wallet/metric?type=${type}`),
   creditUser: (userId: string, amount: number) =>
-    fetchApi("/admin/credit", { method: "POST", body: JSON.stringify({ userId, amount }) }),
+    fetchApi("/admin/credit", { method: "POST", body: JSON.stringify({ user_id: userId, amount }) }),
   debitUser: (userId: string, amount: number) =>
-    fetchApi("/admin/debit", { method: "POST", body: JSON.stringify({ userId, amount }) }),
+    fetchApi("/admin/debit", { method: "POST", body: JSON.stringify({ user_id: userId, amount }) }),
 }
 
 // Admins APIs
@@ -111,4 +112,14 @@ export const adminsApi = {
   createAdmin: (data: any) => fetchApi<any>("/admin/create", { method: "POST", body: JSON.stringify(data) }),
   activateAdmin: (adminId: string) => fetchApi<any>(`/admin/activate/${adminId}`, { method: "PUT" }),
   deactivateAdmin: (adminId: string) => fetchApi<any>(`/admin/deactivate/${adminId}`, { method: "PUT" }),
+}
+
+// Dashboard APIs
+export const dashboardApi = {
+  fetchMetric: (type: "revenue" | "total-users" | "games" | "active-users" | "pending-withdrawals") => 
+    fetchApi<any>(`/admin/dashboard/metrics?type=${type}`),
+  fetchGameParticipationChart: () => 
+    fetchApi<any>("/admin/dashboard/analytics/game-participation"),
+  fetchTransactionVolumeChart: () => 
+    fetchApi<any>("/admin/dashboard/analytics/transaction-volume"),
 }

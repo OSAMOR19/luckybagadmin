@@ -13,9 +13,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { User } from "@/types"
 import { format } from "date-fns"
-import { CheckCircle, Clock, Edit2, User as UserIcon, ArrowUpRight, ArrowDownLeft, Gamepad2 } from "lucide-react"
+import { CheckCircle, Clock, Edit2, User as UserIcon, ArrowUpRight, ArrowDownLeft, Gamepad2, Loader2 } from "lucide-react"
 import { DrawResultsModal } from "@/components/draw-results-modal"
 import { Game } from "@/types"
+import { usersApi } from "@/lib/api"
+import { useEffect } from "react"
 
 const mockGames: Game[] = []
 
@@ -29,6 +31,28 @@ interface UserProfileSheetProps {
 export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: UserProfileSheetProps) {
   const [selectedGame, setSelectedGame] = useState<any>(null)
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+
+  useEffect(() => {
+    if (open && user) {
+      const fetchHistory = async () => {
+        setIsLoadingHistory(true)
+        try {
+          const res = await usersApi.fetchSingleUserWalletHistory(user.id, 1, 5)
+          console.log(`[USER HISTORY DEBUG] for ${user.id}:`, res);
+          setHistory(res?.data || [])
+        } catch (error) {
+          console.error("Failed to fetch user wallet history", error)
+        } finally {
+          setIsLoadingHistory(false)
+        }
+      }
+      fetchHistory()
+    } else {
+      setHistory([])
+    }
+  }, [open, user])
 
   if (!user) return null
 
@@ -135,39 +159,51 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
             <div className="flex items-center gap-2 mb-3 px-1">
               <h3 className="text-sm font-bold text-slate-900">Transaction History</h3>
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">
-                2
+                {history.length}
               </span>
             </div>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Ticket refund</p>
-                    <p className="text-[10px] font-medium text-slate-400 mt-0.5">2026-05-28 • TXN-00191</p>
-                  </div>
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center p-4 bg-white rounded-xl border border-slate-200">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                 </div>
-                <span className="text-sm font-bold text-emerald-600 inline-flex items-center">
-                  +<Image src="/naira1.png" alt="₦" width={12} height={12} className="mx-[2px] object-contain" />500
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100">
-                    <ArrowDownLeft className="h-4 w-4 text-rose-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">Prize payout LBG-GM-0005</p>
-                    <p className="text-[10px] font-medium text-slate-400 mt-0.5">2026-03-22 • TXN-00088</p>
-                  </div>
+              ) : history.length > 0 ? (
+                history.map((tx: any, idx: number) => {
+                  const desc = tx.description?.toLowerCase() || "";
+                  const isDebit = desc.includes("purchase") || desc.includes("debit") || desc.includes("play");
+                  
+                  return (
+                    <div key={tx.trxId || idx} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isDebit ? 'bg-rose-100' : 'bg-emerald-100'}`}>
+                          {isDebit ? (
+                            <ArrowDownLeft className="h-4 w-4 text-rose-600" />
+                          ) : (
+                            <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900 truncate max-w-[180px]" title={tx.description}>
+                            {tx.description}
+                          </p>
+                          <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                            {format(new Date(tx.createdAt), "yyyy-MM-dd")} • {tx.trxId}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-sm font-bold inline-flex items-center ${isDebit ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {isDebit ? "-" : "+"}
+                        <Image src="/naira1.png" alt="₦" width={12} height={12} className="mx-[2px] object-contain" />
+                        {new Intl.NumberFormat("en-US").format(tx.amount)}
+                      </span>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center p-4 text-sm text-slate-500 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  No recent transactions
                 </div>
-                <span className="text-sm font-bold text-rose-600 inline-flex items-center">
-                  -<Image src="/naira1.png" alt="₦" width={12} height={12} className="mx-[2px] object-contain" />1,200
-                </span>
-              </div>
+              )}
             </div>
           </div>
 

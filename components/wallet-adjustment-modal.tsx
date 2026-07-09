@@ -81,7 +81,8 @@ export function WalletAdjustmentModal({ user, open, onOpenChange, onSuccess }: W
 
       onOpenChange(false)
 
-      const newBalance = (response as any)?.data?.result?.["wallet Balance"]
+      const resData = (response as any)?.data
+      const newBalance = resData?.new_balance ?? resData?.result?.["wallet Balance"]
       const balanceText = newBalance !== undefined ? ` New balance: ₦${newBalance}` : ''
 
       if (type === "credit") {

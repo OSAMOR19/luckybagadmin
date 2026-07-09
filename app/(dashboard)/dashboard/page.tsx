@@ -12,33 +12,100 @@ import { Activity, Game } from "../../../types"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Area, Legend } from "recharts"
 import { formatDistanceToNow, format } from "date-fns"
 import { useState, useEffect } from "react"
-import { usersApi } from "../../../lib/api"
+import { usersApi, dashboardApi, gamesApi } from "../../../lib/api"
 
 export default function DashboardPage() {
   const metrics = mockDashboardMetrics
   const [pendingAmount, setPendingAmount] = useState(metrics.pendingWithdrawals)
   const [creditAmount, setCreditAmount] = useState(metrics.totalRevenue)
   const [debitAmount, setDebitAmount] = useState(0)
+  const [totalUsers, setTotalUsers] = useState(metrics.totalUsers)
+  const [activeUsers, setActiveUsers] = useState(metrics.activeUsers)
+  const [activeGames, setActiveGames] = useState(metrics.activeGames)
+  const [gameParticipationData, setGameParticipationData] = useState(mockChartData.gameParticipation)
+  const [transactionVolumeData, setTransactionVolumeData] = useState(mockChartData.transactions)
 
   useEffect(() => {
-    usersApi.fetchWalletMetric("pending").then((res) => {
-      console.log("Pending Metric Response:", res);
-      if (res?.data?.amount !== undefined) {
-        setPendingAmount(res.data.amount)
+    const parseValue = (res: any) => {
+      if (res?.data === undefined || res?.data === null) return undefined;
+      if (typeof res.data === 'number') return res.data;
+      if (typeof res.data === 'string') return parseInt(res.data, 10) || 0;
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data[0]?.amount ?? res.data[0]?.count ?? res.data[0]?.games ?? res.data[0]?.total ?? Object.values(res.data[0] || {})[0] ?? 0;
       }
+      return res.data.amount ?? res.data.count ?? res.data.total ?? res.data.games ?? Object.values(res.data)[0];
+    };
+
+    // Wallet metrics
+    usersApi.fetchWalletMetric("pending").then((res) => {
+      if (res?.data?.amount !== undefined) setPendingAmount(res.data.amount)
     }).catch(console.error)
 
     usersApi.fetchWalletMetric("credit").then((res) => {
-      console.log("Credit Metric Response:", res);
-      if (res?.data?.amount !== undefined) {
-        setCreditAmount(res.data.amount)
-      }
+      if (res?.data?.amount !== undefined) setCreditAmount(res.data.amount)
     }).catch(console.error)
 
     usersApi.fetchWalletMetric("debit").then((res) => {
-      console.log("Debit Metric Response:", res);
-      if (res?.data?.amount !== undefined) {
-        setDebitAmount(res.data.amount)
+      if (res?.data?.amount !== undefined) setDebitAmount(res.data.amount)
+    }).catch(console.error)
+    
+    // Dashboard metrics
+    dashboardApi.fetchMetric("total-users").then((res) => {
+      console.log("[DASHBOARD METRIC] total-users response:", res);
+      const val = parseValue(res);
+      if (val !== undefined) setTotalUsers(val)
+    }).catch(console.error)
+
+    dashboardApi.fetchMetric("active-users").then((res) => {
+      console.log("[DASHBOARD METRIC] active-users response:", res);
+      const val = parseValue(res);
+      if (val !== undefined) setActiveUsers(val)
+    }).catch(console.error)
+
+    dashboardApi.fetchMetric("games").then((res) => {
+      console.log("[DASHBOARD METRIC] games response:", res);
+      const val = parseValue(res);
+      if (val > 0) {
+        setActiveGames(val)
+      } else {
+        // Fallback
+        gamesApi.fetchGames().then(gRes => {
+          const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+          setActiveGames(list.length);
+        }).catch(console.error);
+      }
+    }).catch(err => {
+      console.error(err);
+      // Fallback
+      gamesApi.fetchGames().then(gRes => {
+        const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+        setActiveGames(list.length);
+      }).catch(console.error);
+    })
+
+    // Game participation chart
+    dashboardApi.fetchGameParticipationChart().then((res) => {
+      console.log("[DASHBOARD METRIC] game participation response:", res);
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const formattedData = res.data.map((item: any) => ({
+          date: item.day || item.date || "",
+          participants: item.totalParticipants || 0,
+          newUsers: item.newUsers || 0,
+        }));
+        setGameParticipationData(formattedData);
+      }
+    }).catch(console.error)
+
+    // Transaction volume chart
+    dashboardApi.fetchTransactionVolumeChart().then((res) => {
+      console.log("[DASHBOARD METRIC] transaction volume response:", res);
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const formattedData = res.data.map((item: any) => ({
+          date: item.day || item.date || "",
+          amount: item.deposits || 0,
+          withdrawals: item.withdrawals || 0,
+        }));
+        setTransactionVolumeData(formattedData);
       }
     }).catch(console.error)
   }, [])
@@ -56,6 +123,23 @@ export default function DashboardPage() {
     )
   }
 
+  const NairaIcon = ({ className }: { className?: string }) => (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M6 20V4l12 16V4" />
+      <path d="M4 10h16" />
+      <path d="M4 14h16" />
+    </svg>
+  )
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,20 +151,21 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title="Total Users"
-          value={metrics.totalUsers.toLocaleString()}
+          value={totalUsers.toLocaleString()}
           icon={Users}
           trend={{ value: 12.5, isPositive: true }}
         />
         <StatCard
           title="Active Users"
-          value={metrics.activeUsers.toLocaleString()}
+          value={activeUsers.toLocaleString()}
           icon={UserCheck}
           trend={{ value: 8.2, isPositive: true }}
         />
         <StatCard
           title="Total Credit"
           value={formatCurrency(creditAmount)}
-          icon={DollarSign}
+          icon={NairaIcon}
+          iconClassName="bg-blue-500/10 text-blue-500"
           trend={{ value: 15.3, isPositive: true }}
         />
         <StatCard
@@ -95,14 +180,14 @@ export default function DashboardPage() {
           icon={Clock}
           trend={{ value: -5.1, isPositive: false }}
         />
-        <StatCard title="Active Games" value={metrics.activeGames} icon={Gamepad2} />
+        <StatCard title="Active Games" value={activeGames} icon={Gamepad2} />
       </div>
 
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCard title="Game Participation" description="Daily participants over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={mockChartData.gameParticipation}>
+            <ComposedChart data={gameParticipationData}>
               <defs>
                 <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
@@ -133,7 +218,7 @@ export default function DashboardPage() {
 
         <ChartCard title="Transaction Volume" description="Daily transaction amounts over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={mockChartData.transactions}>
+            <ComposedChart data={transactionVolumeData}>
               <defs>
                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>

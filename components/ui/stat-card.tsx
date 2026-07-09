@@ -5,15 +5,16 @@ import { cn } from "@/lib/utils"
 interface StatCardProps {
   title: string
   value: React.ReactNode
-  icon: LucideIcon
+  icon: React.ElementType
   trend?: {
     value: number
     isPositive: boolean
   }
   className?: string
+  iconClassName?: string
 }
 
-export function StatCard({ title, value, icon: Icon, trend, className }: StatCardProps) {
+export function StatCard({ title, value, icon: Icon, trend, className, iconClassName }: StatCardProps) {
   return (
     <Card 
       className={cn(
@@ -26,7 +27,7 @@ export function StatCard({ title, value, icon: Icon, trend, className }: StatCar
         <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">
           {title}
         </CardTitle>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110", iconClassName || "bg-primary/10 text-primary")}>
           <Icon className="h-5 w-5" />
         </div>
       </CardHeader>
