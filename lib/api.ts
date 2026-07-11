@@ -66,9 +66,14 @@ export const authApi = {
   },
 
   forgotPassword: (email: string) =>
-    fetchApi<{ status: string; message: string }>("/admin/forgot-password", {
+    fetchApi<{ status: string; message: string; data: any; next: null }>("/admin/request-reset-password", {
       method: "POST",
       body: JSON.stringify({ email }),
+    }),
+  resetPassword: (data: { token: string; new_password: string; confirm_password: string }) =>
+    fetchApi<{ status: string; message: string; data: null; next: null }>("/admin/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
   logout: () =>
     fetchApi<{ status: string; message: string; data: null }>("/auth/logout", {
@@ -78,7 +83,7 @@ export const authApi = {
 
 // Games APIs
 export const gamesApi = {
-  fetchGames: () => fetchApi<{ status: string; message: string; data: any[] | { games: any[] }; next: string | null }>("/admin/games"),
+  fetchGames: (page: number = 1, limit: number = 10) => fetchApi<{ status: string; message: string; data: any[] | { games: any[] }; next: string | null }>(`/admin/games?page=${page}&limit=${limit}`),
   getUpcomingRaffles: () => fetchApi<{ status: string; message: string; data: { games: any[] } }>("/games/upcoming"),
   createGame: async (data: any) => {
     console.log("[createGame] Request payload:", data);
@@ -90,11 +95,12 @@ export const gamesApi = {
   stopGame: (gameId: string) => fetchApi("/admin/games/stop", { method: "POST", body: JSON.stringify({ game_id: gameId }) }),
   getDraws: (gameId: string) => fetchApi(`/get-draws?gameId=${gameId}`),
   getResults: (gameId: string) => fetchApi(`/admin/games/results/${gameId}`),
+  fetchGameParticipants: (gameId: string, page: number = 1) => fetchApi<any>(`/admin/games/participants/${gameId}?page=${page}`),
 }
 
 // Users APIs
 export const usersApi = {
-  fetchUsers: (page: number = 1) => fetchApi<any>(`/admin/users?page=${page}`),
+  fetchUsers: (page: number = 1, limit: number = 10) => fetchApi<any>(`/admin/users?page=${page}&limit=${limit}`),
   fetchAllBalances: () => fetchApi<any>("/admin/balances"),
   fetchUserBalances: (userId: string) => fetchApi(`/admin/users-balances?userId=${userId}`),
   fetchWalletHistory: (page: number = 1) => fetchApi<any>(`/admin/wallet/history?page=${page}`),
@@ -104,6 +110,7 @@ export const usersApi = {
     fetchApi("/admin/credit", { method: "POST", body: JSON.stringify({ user_id: userId, amount }) }),
   debitUser: (userId: string, amount: number) =>
     fetchApi("/admin/debit", { method: "POST", body: JSON.stringify({ user_id: userId, amount }) }),
+  fetchUserTickets: (userId: string, page: number = 1) => fetchApi<any>(`/admin/users/${userId}/tickets?page=${page}`),
 }
 
 // Admins APIs

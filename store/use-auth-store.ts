@@ -19,6 +19,7 @@ export const useAuthStore = create<AuthState>()(
       login: (admin, token) => {
         if (typeof window !== "undefined") {
           localStorage.setItem("auth_token", token)
+          document.cookie = `auth_token=${token}; path=/; max-age=86400; SameSite=Lax`
         }
         set({ admin, token, isAuthenticated: true })
       },
@@ -28,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem("auth-storage")
           localStorage.clear()
           sessionStorage.clear()
+          document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
         }
         set({ admin: null, token: null, isAuthenticated: false })
       },

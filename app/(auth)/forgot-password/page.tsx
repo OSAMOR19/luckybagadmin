@@ -28,14 +28,14 @@ export default function ForgotPasswordPage() {
       setIsSuccess(true)
       toast({
         title: "Request Sent",
-        description: "If an account exists for that email, a password reset link has been sent.",
+        description: "A password reset link has been sent to your email.",
       })
     } catch (error: any) {
       // Still show success to prevent email enumeration attacks
       setIsSuccess(true)
       toast({
         title: "Request Sent",
-        description: "If an account exists for that email, a password reset link has been sent.",
+        description: "A password reset link has been sent to your email.",
       })
     } finally {
       setIsLoading(false)
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
               </div>
               <h2 className="text-lg font-semibold text-slate-900">Check your inbox</h2>
               <p className="text-sm text-slate-600 mb-6">
-                If an account exists for <strong>{email}</strong>, a password reset link has been sent. Please check your inbox.
+                A password reset link has been sent to <strong>{email}</strong>. Please check your inbox.
               </p>
               <Link 
                 href="/login"

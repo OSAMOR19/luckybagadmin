@@ -33,6 +33,8 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [tickets, setTickets] = useState<any[]>([])
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false)
 
   useEffect(() => {
     if (open && user) {
@@ -48,9 +50,44 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
           setIsLoadingHistory(false)
         }
       }
+      
+      const fetchTickets = async () => {
+        setIsLoadingTickets(true)
+        try {
+          const res = await usersApi.fetchUserTickets(user.id, 1)
+          console.log(`[USER TICKETS DEBUG] Response for user ${user.id}:`, res);
+          let ticketsData = [];
+          if (res.status === "success") {
+            if (Array.isArray(res.data)) {
+              ticketsData = res.data;
+            } else if (res.data && Array.isArray(res.data.data)) {
+              ticketsData = res.data.data;
+            } else if (res.data && Array.isArray(res.data.tickets)) {
+              ticketsData = res.data.tickets;
+            }
+          }
+          
+          if (ticketsData.length > 0) {
+            ticketsData.forEach((ticket: any) => {
+              console.log("[USER TICKET INFO] Ticket:", ticket.ticket, "Game Played:", ticket.gamePlayed);
+            });
+            setTickets(ticketsData)
+          } else {
+            console.log("[USER TICKETS] No tickets found in parsed data structure", ticketsData);
+            setTickets([])
+          }
+        } catch (error) {
+          console.error("Failed to fetch user tickets", error)
+        } finally {
+          setIsLoadingTickets(false)
+        }
+      }
+      
       fetchHistory()
+      fetchTickets()
     } else {
       setHistory([])
+      setTickets([])
     }
   }, [open, user])
 
@@ -212,34 +249,38 @@ export function UserProfileSheet({ user, open, onOpenChange, onModifyBalance }: 
             <div className="flex items-center gap-2 mb-3 px-1">
               <h3 className="text-sm font-bold text-slate-900">Game Participation</h3>
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">
-                {mockGames.slice(0, 3).length}
+                {tickets.length}
               </span>
             </div>
             <div className="space-y-3">
-              {mockGames.slice(0, 3).map((game) => (
-                <div key={game.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                      <Gamepad2 className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{game.title}</p>
-                      <p className="text-[10px] font-medium text-slate-400 mt-0.5">{game.id.replace('game_', 'LBG GM ')}</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="h-7 text-xs text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => {
-                      setSelectedGame(game)
-                      setIsDrawModalOpen(true)
-                    }}
-                  >
-                    Results
-                  </Button>
+              {isLoadingTickets ? (
+                <div className="flex items-center justify-center p-4 bg-white rounded-xl border border-slate-200">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                 </div>
-              ))}
+              ) : tickets.length > 0 ? (
+                tickets.slice(0, 3).map((t, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                        <Gamepad2 className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 capitalize">{t.gamePlayed?.name || 'Unknown'}</p>
+                        <p className="text-[10px] font-medium text-slate-400 mt-0.5 font-mono">{t.ticket}</p>
+                      </div>
+                    </div>
+                    {t.isWinner && (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[10px] px-2 py-0.5">
+                        Winner
+                      </Badge>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center p-4 text-sm text-slate-500 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  No games played
+                </div>
+              )}
             </div>
           </div>
         </div>

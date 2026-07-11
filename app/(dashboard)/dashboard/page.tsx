@@ -6,6 +6,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { ChartCard } from "@/components/ui/chart-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Users, UserCheck, DollarSign, Clock, Gamepad2, TrendingUp, TrendingDown, CheckCircle2, Wallet, AlertTriangle } from "lucide-react"
 import { mockDashboardMetrics, mockActivityFeed, mockGames, mockChartData } from "../../../lib/mock-data"
 import { Activity, Game } from "../../../types"
@@ -15,15 +16,30 @@ import { useState, useEffect } from "react"
 import { usersApi, dashboardApi, gamesApi } from "../../../lib/api"
 
 export default function DashboardPage() {
-  const metrics = mockDashboardMetrics
-  const [pendingAmount, setPendingAmount] = useState(metrics.pendingWithdrawals)
-  const [creditAmount, setCreditAmount] = useState(metrics.totalRevenue)
+  const generateEmptyChartData = () => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        date: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()],
+        participants: 0,
+        newUsers: 0,
+        amount: 0,
+        withdrawals: 0,
+        winnings: 0,
+      };
+    });
+  };
+
+  const [pendingAmount, setPendingAmount] = useState(0)
+  const [creditAmount, setCreditAmount] = useState(0)
   const [debitAmount, setDebitAmount] = useState(0)
-  const [totalUsers, setTotalUsers] = useState(metrics.totalUsers)
-  const [activeUsers, setActiveUsers] = useState(metrics.activeUsers)
-  const [activeGames, setActiveGames] = useState(metrics.activeGames)
-  const [gameParticipationData, setGameParticipationData] = useState(mockChartData.gameParticipation)
-  const [transactionVolumeData, setTransactionVolumeData] = useState(mockChartData.transactions)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [activeUsers, setActiveUsers] = useState(0)
+  const [activeGames, setActiveGames] = useState(0)
+  const [gameParticipationData, setGameParticipationData] = useState<any[]>(generateEmptyChartData())
+  const [transactionVolumeData, setTransactionVolumeData] = useState<any[]>(generateEmptyChartData())
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const parseValue = (res: any) => {
@@ -36,78 +52,95 @@ export default function DashboardPage() {
       return res.data.amount ?? res.data.count ?? res.data.total ?? res.data.games ?? Object.values(res.data)[0];
     };
 
-    // Wallet metrics
-    usersApi.fetchWalletMetric("pending").then((res) => {
-      if (res?.data?.amount !== undefined) setPendingAmount(res.data.amount)
-    }).catch(console.error)
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.allSettled([
+        // Wallet metrics
+        usersApi.fetchWalletMetric("pending").then((res) => {
+          if (res?.data?.amount !== undefined) setPendingAmount(res.data.amount)
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
 
-    usersApi.fetchWalletMetric("credit").then((res) => {
-      if (res?.data?.amount !== undefined) setCreditAmount(res.data.amount)
-    }).catch(console.error)
+        usersApi.fetchWalletMetric("credit").then((res) => {
+          if (res?.data?.amount !== undefined) setCreditAmount(res.data.amount)
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
 
-    usersApi.fetchWalletMetric("debit").then((res) => {
-      if (res?.data?.amount !== undefined) setDebitAmount(res.data.amount)
-    }).catch(console.error)
-    
-    // Dashboard metrics
-    dashboardApi.fetchMetric("total-users").then((res) => {
-      console.log("[DASHBOARD METRIC] total-users response:", res);
-      const val = parseValue(res);
-      if (val !== undefined) setTotalUsers(val)
-    }).catch(console.error)
+        usersApi.fetchWalletMetric("debit").then((res) => {
+          if (res?.data?.amount !== undefined) setDebitAmount(res.data.amount)
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
+        
+        // Dashboard metrics
+        dashboardApi.fetchMetric("total-users").then((res) => {
+          console.log("[DASHBOARD METRIC] total-users response:", res);
+          const val = parseValue(res);
+          if (val !== undefined) setTotalUsers(val)
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
 
-    dashboardApi.fetchMetric("active-users").then((res) => {
-      console.log("[DASHBOARD METRIC] active-users response:", res);
-      const val = parseValue(res);
-      if (val !== undefined) setActiveUsers(val)
-    }).catch(console.error)
+        dashboardApi.fetchMetric("active-users").then((res) => {
+          console.log("[DASHBOARD METRIC] active-users response:", res);
+          const val = parseValue(res);
+          if (val !== undefined) setActiveUsers(val)
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
 
-    dashboardApi.fetchMetric("games").then((res) => {
-      console.log("[DASHBOARD METRIC] games response:", res);
-      const val = parseValue(res);
-      if (val > 0) {
-        setActiveGames(val)
-      } else {
-        // Fallback
-        gamesApi.fetchGames().then(gRes => {
-          const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
-          setActiveGames(list.length);
-        }).catch(console.error);
-      }
-    }).catch(err => {
-      console.error(err);
-      // Fallback
-      gamesApi.fetchGames().then(gRes => {
-        const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
-        setActiveGames(list.length);
-      }).catch(console.error);
-    })
+        dashboardApi.fetchMetric("games").then((res) => {
+          console.log("[DASHBOARD METRIC] games response:", res);
+          const val = parseValue(res);
+          if (val > 0) {
+            setActiveGames(val)
+          } else {
+            // Fallback
+            return gamesApi.fetchGames().then(gRes => {
+              const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+              setActiveGames(list.length);
+            }).catch(e => console.log("[METRIC ERROR]", e.message));
+          }
+        }).catch(err => {
+          console.log("[METRIC ERROR]", err.message);
+          // Fallback
+          return gamesApi.fetchGames().then(gRes => {
+            const list = Array.isArray(gRes?.data) ? gRes.data : ((gRes?.data as any)?.games || []);
+            setActiveGames(list.length);
+          }).catch(e => console.log("[METRIC ERROR]", e.message));
+        }),
 
-    // Game participation chart
-    dashboardApi.fetchGameParticipationChart().then((res) => {
-      console.log("[DASHBOARD METRIC] game participation response:", res);
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        const formattedData = res.data.map((item: any) => ({
-          date: item.day || item.date || "",
-          participants: item.totalParticipants || 0,
-          newUsers: item.newUsers || 0,
-        }));
-        setGameParticipationData(formattedData);
-      }
-    }).catch(console.error)
+        // Game participation chart
+        dashboardApi.fetchGameParticipationChart().then((res) => {
+          console.log("[DASHBOARD METRIC] game participation response:", res);
+          if (res?.data && Array.isArray(res.data)) {
+            if (res.data.length > 0) {
+              const formattedData = res.data.map((item: any) => ({
+                date: item.day || item.date || "",
+                participants: item.totalParticipants || 0,
+                newUsers: item.newUsers || 0,
+              }));
+              setGameParticipationData(formattedData);
+            } else {
+              setGameParticipationData(generateEmptyChartData());
+            }
+          }
+        }).catch(e => console.log("[METRIC ERROR]", e.message)),
 
-    // Transaction volume chart
-    dashboardApi.fetchTransactionVolumeChart().then((res) => {
-      console.log("[DASHBOARD METRIC] transaction volume response:", res);
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        const formattedData = res.data.map((item: any) => ({
-          date: item.day || item.date || "",
-          amount: item.deposits || 0,
-          withdrawals: item.withdrawals || 0,
-        }));
-        setTransactionVolumeData(formattedData);
-      }
-    }).catch(console.error)
+        // Transaction volume chart
+        dashboardApi.fetchTransactionVolumeChart().then((res) => {
+          console.log("[DASHBOARD METRIC] transaction volume response:", res);
+          if (res?.data && Array.isArray(res.data)) {
+            if (res.data.length > 0) {
+              const formattedData = res.data.map((item: any) => ({
+                date: item.day || item.date || "",
+                amount: item.deposits || 0,
+                withdrawals: item.withdrawals || 0,
+                winnings: item.winnings || 0,
+              }));
+              setTransactionVolumeData(formattedData);
+            } else {
+              setTransactionVolumeData(generateEmptyChartData());
+            }
+          }
+        }).catch(e => console.log("[METRIC ERROR]", e.message))
+      ]);
+      setIsLoading(false);
+    };
+
+    loadData();
   }, [])
 
   const formatCurrency = (amount: number) => {
@@ -148,108 +181,127 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard
-          title="Total Users"
-          value={totalUsers.toLocaleString()}
-          icon={Users}
-          trend={{ value: 12.5, isPositive: true }}
-        />
-        <StatCard
-          title="Active Users"
-          value={activeUsers.toLocaleString()}
-          icon={UserCheck}
-          trend={{ value: 8.2, isPositive: true }}
-        />
-        <StatCard
-          title="Total Credit"
-          value={formatCurrency(creditAmount)}
-          icon={NairaIcon}
-          iconClassName="bg-blue-500/10 text-blue-500"
-          trend={{ value: 15.3, isPositive: true }}
-        />
-        <StatCard
-          title="Total Debit"
-          value={formatCurrency(debitAmount)}
-          icon={Wallet}
-          trend={{ value: -2.4, isPositive: false }}
-        />
-        <StatCard
-          title="Pending Withdrawals"
-          value={formatCurrency(pendingAmount)}
-          icon={Clock}
-          trend={{ value: -5.1, isPositive: false }}
-        />
-        <StatCard title="Active Games" value={activeGames} icon={Gamepad2} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {isLoading ? (
+          <>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Users"
+              value={totalUsers.toLocaleString()}
+              icon={Users}
+              trend={{ value: 12.5, isPositive: true }}
+            />
+            <StatCard
+              title="Active Users"
+              value={activeUsers.toLocaleString()}
+              icon={UserCheck}
+              trend={{ value: 8.2, isPositive: true }}
+            />
+            {/* <StatCard
+              title="Total Credit"
+              value={formatCurrency(creditAmount)}
+              icon={NairaIcon}
+              iconClassName="bg-blue-500/10 text-blue-500"
+              trend={{ value: 15.3, isPositive: true }}
+            />
+            <StatCard
+              title="Total Debit"
+              value={formatCurrency(debitAmount)}
+              icon={Wallet}
+              trend={{ value: -2.4, isPositive: false }}
+            /> */}
+            <StatCard
+              title="Pending Withdrawals"
+              value={formatCurrency(pendingAmount)}
+              icon={Clock}
+              trend={{ value: -5.1, isPositive: false }}
+            />
+            <StatCard title="Active Games" value={activeGames} icon={Gamepad2} />
+          </>
+        )}
       </div>
 
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard title="Game Participation" description="Daily participants over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={gameParticipationData}>
-              <defs>
-                <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.2}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
-              <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <Tooltip
-                cursor={{ fill: "var(--muted)" }}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-                  padding: "12px",
-                  fontWeight: 500,
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-              <Bar yAxisId="left" name="Total Participants" dataKey="participants" fill="url(#colorParticipants)" radius={[6, 6, 0, 0]} barSize={32} />
-              <Line yAxisId="right" type="monotone" name="New Users" dataKey="newUsers" stroke="var(--success)" strokeWidth={3} dot={{ fill: "var(--card)", stroke: "var(--success)", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "var(--success)" }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        {isLoading ? (
+          <>
+            <Skeleton className="h-[400px] w-full rounded-xl" />
+            <Skeleton className="h-[400px] w-full rounded-xl" />
+          </>
+        ) : (
+          <>
+            <ChartCard title="Game Participation" description="Daily participants over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={gameParticipationData}>
+                  <defs>
+                    <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
+                  <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: "var(--muted)" }}
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+                      padding: "12px",
+                      fontWeight: 500,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                  <Bar yAxisId="left" name="Total Participants" dataKey="participants" fill="url(#colorParticipants)" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Line yAxisId="right" type="monotone" name="New Users" dataKey="newUsers" stroke="var(--success)" strokeWidth={3} dot={{ fill: "var(--card)", stroke: "var(--success)", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "var(--success)" }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-        <ChartCard title="Transaction Volume" description="Daily transaction amounts over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={transactionVolumeData}>
-              <defs>
-                <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.2}/>
-                </linearGradient>
-                <linearGradient id="colorWithdrawals" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--warning)" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="var(--warning)" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
-              <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
-              <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-                  padding: "12px",
-                  fontWeight: 500,
-                }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-              <Bar yAxisId="left" name="Deposits" dataKey="amount" fill="url(#colorAmount)" radius={[6, 6, 0, 0]} barSize={32} />
-              <Area yAxisId="right" type="monotone" name="Withdrawals" dataKey="withdrawals" stroke="var(--warning)" fill="url(#colorWithdrawals)" strokeWidth={3} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
+            <ChartCard title="Transaction Volume" description="Daily transaction amounts over the last week" className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={transactionVolumeData}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                    </linearGradient>
+                    <linearGradient id="colorWithdrawals" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--warning)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--warning)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
+                  <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
+                  <YAxis yAxisId="right" orientation="right" className="text-xs font-medium" tick={{ fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+                      padding: "12px",
+                      fontWeight: 500,
+                    }}
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                  <Bar yAxisId="left" name="Deposits" dataKey="amount" fill="url(#colorAmount)" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Area yAxisId="right" type="monotone" name="Withdrawals" dataKey="withdrawals" stroke="var(--warning)" fill="url(#colorWithdrawals)" strokeWidth={3} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </>
+        )}
       </div>
 
       {/* Activity and Draws Grid */}
@@ -307,6 +359,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Upcoming Draws */}
+        {/*
         <Card className="border-primary/10 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
           <CardHeader className="border-b border-border/40 pb-4 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-semibold tracking-tight">Upcoming Draws</CardTitle>
@@ -347,6 +400,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        */}
       </div>
     </div>
   )

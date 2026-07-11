@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { authApi, dashboardApi, usersApi, gamesApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -142,7 +143,7 @@ export function Sidebar() {
           setMetrics(prev => ({ ...prev, games: list.length }));
         }).catch(console.error);
       });
-      
+
     usersApi.fetchWalletMetric("pending")
       .then(res => setMetrics(prev => ({ ...prev, wallet: res?.data?.amount || 0 })))
       .catch(console.error);
@@ -159,7 +160,7 @@ export function Sidebar() {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 shadow-lg">
-              <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+              <Image src="/luckybagicon.svg" alt="LuckyBag Logo" width={24} height={24} className="object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">LuckyBag</h1>
@@ -172,14 +173,14 @@ export function Sidebar() {
         <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-accent/30 blur-xl" />
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-6 no-scrollbar">
         {navigationSections.map((section) => (
           <div key={section.title}>
             <h3 className="px-3 mb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{section.title}</h3>
             <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = pathname === item.href
-                
+
                 let dynamicBadge: string | null = item.badge
                 if (item.name === "Users" && metrics.users > 0) dynamicBadge = formatBadge(metrics.users)
                 if (item.name === "Games" && metrics.games > 0) dynamicBadge = formatBadge(metrics.games)

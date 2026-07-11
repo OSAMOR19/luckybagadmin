@@ -50,6 +50,7 @@ export default function GamesPage() {
   const [selectedParticipantsGame, setSelectedParticipantsGame] = useState<Game | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
   const { toast } = useToast()
 
@@ -59,15 +60,29 @@ export default function GamesPage() {
       console.log("Fetching games and upcoming raffles...")
 
       const [gamesResponse, upcomingResponse] = await Promise.all([
-        gamesApi.fetchGames().catch(e => ({ status: "error", message: e.message, data: [] })),
+        gamesApi.fetchGames(currentPage, itemsPerPage).catch(e => ({ status: "error", message: e.message, data: [] })),
         gamesApi.getUpcomingRaffles().catch(e => ({ status: "error", message: e.message, data: { games: [] } }))
       ])
 
+      console.log("DEBUG_API_GAMES:", JSON.stringify(gamesResponse, null, 2))
       let allGamesData: any[] = []
+      let total = 0
 
       if (gamesResponse.status === "success") {
         allGamesData = [...(Array.isArray(gamesResponse.data) ? gamesResponse.data : (gamesResponse.data?.games || []))]
+
+        let apiTotal = (gamesResponse as any).total ?? (gamesResponse as any).data?.total ?? (gamesResponse as any).data?.pagination?.total ?? (gamesResponse as any).pagination?.total;
+
+        if (apiTotal !== undefined && apiTotal !== null) {
+          total = apiTotal;
+        } else if (allGamesData.length > 0) {
+          total = currentPage * itemsPerPage + 1;
+        } else {
+          total = (currentPage - 1) * itemsPerPage;
+        }
       }
+
+      setTotalItems(total)
 
       if (upcomingResponse.status === "success") {
         const upcomingGames = upcomingResponse.data?.games || []
@@ -116,7 +131,7 @@ export default function GamesPage() {
 
   useEffect(() => {
     fetchGames()
-  }, [])
+  }, [currentPage])
 
   const handleStartGame = async (gameId: string) => {
     try {
@@ -203,11 +218,8 @@ export default function GamesPage() {
     }
   })
 
-  const totalPages = Math.ceil(filteredGames.length / itemsPerPage)
-  const paginatedGames = filteredGames.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
+  const paginatedGames = filteredGames
 
   const handleSearchChange = (val: string) => {
     setSearchQuery(val)
@@ -234,6 +246,7 @@ export default function GamesPage() {
             onClick={() => handleTabChange("all")}
           >
             All Games
+            {/* We only show counts.all (which is items on current page) because the backend doesn't return a total count */}
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "all" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.all}
             </Badge>
@@ -253,7 +266,7 @@ export default function GamesPage() {
               {counts.active}
             </Badge>
           </Button> */}
-          <Button
+          {/* <Button
             variant="ghost"
             className={cn(
               "rounded-xl px-4 py-2 h-auto text-sm font-medium transition-all",
@@ -267,7 +280,7 @@ export default function GamesPage() {
             <Badge variant="secondary" className={cn("ml-2 rounded-md", activeTab === "upcoming" ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent border-slate-200 dark:border-slate-700")}>
               {counts.upcoming}
             </Badge>
-          </Button>
+          </Button> */}
           <Button
             variant="ghost"
             className={cn(
@@ -421,7 +434,7 @@ export default function GamesPage() {
             </TableBody>
           </Table>
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-500">
-            Showing {paginatedGames.length} of {filteredGames.length} games
+            Showing {paginatedGames.length} games on this page
           </div>
         </Card>
       ) : (
@@ -521,22 +534,22 @@ export default function GamesPage() {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              
+
               {[...Array(totalPages)].map((_, i) => {
                 const page = i + 1;
                 if (
-                  page === 1 || 
-                  page === totalPages || 
+                  page === 1 ||
+                  page === totalPages ||
                   (page >= currentPage - 1 && page <= currentPage + 1)
                 ) {
                   return (
                     <PaginationItem key={page}>
-                      <PaginationLink 
+                      <PaginationLink
                         isActive={currentPage === page}
                         onClick={() => setCurrentPage(page)}
                         className="cursor-pointer"
@@ -546,7 +559,7 @@ export default function GamesPage() {
                     </PaginationItem>
                   )
                 }
-                
+
                 if (page === currentPage - 2 || page === currentPage + 2) {
                   return (
                     <PaginationItem key={page}>
@@ -554,12 +567,12 @@ export default function GamesPage() {
                     </PaginationItem>
                   )
                 }
-                
+
                 return null;
               })}
 
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
