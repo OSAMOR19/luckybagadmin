@@ -182,9 +182,9 @@ export function Sidebar() {
                 const isActive = pathname === item.href
 
                 let dynamicBadge: string | null = item.badge
-                if (item.name === "Users" && metrics.users > 0) dynamicBadge = formatBadge(metrics.users)
-                if (item.name === "Games" && metrics.games > 0) dynamicBadge = formatBadge(metrics.games)
-                if (item.name === "Wallet Management" && metrics.wallet > 0) dynamicBadge = formatBadge(metrics.wallet)
+                // if (item.name === "Users" && metrics.users > 0) dynamicBadge = formatBadge(metrics.users)
+                // if (item.name === "Games" && metrics.games > 0) dynamicBadge = formatBadge(metrics.games)
+                // if (item.name === "Wallet Management" && metrics.wallet > 0) dynamicBadge = formatBadge(metrics.wallet)
 
                 return (
                   <Link

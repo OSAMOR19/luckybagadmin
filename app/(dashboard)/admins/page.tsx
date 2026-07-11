@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CreateAdminModal } from "@/components/create-admin-modal"
-import { Plus, Search, Shield, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { Plus, Search, Shield, CheckCircle, XCircle, Loader2, Lock } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { adminsApi } from "@/lib/api"
 import { Admin, UserRole } from "@/types"
@@ -18,6 +19,7 @@ export default function AdminsPage() {
   const [admins, setAdmins] = useState<Admin[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
+  const [isAccessDenied, setIsAccessDenied] = useState(false)
   const { toast } = useToast()
 
   const fetchAdmins = async () => {
@@ -45,12 +47,16 @@ export default function AdminsPage() {
       setAdmins(formattedAdmins)
     } catch (error: any) {
       console.error("Failed to fetch admins:", error)
-      setDebugInfo(`API Error: ${error?.message || 'Unknown error'}\nStatus: ${error?.status || 'N/A'}`);
-      toast({
-        title: "Error loading admins",
-        description: error?.message || "Could not connect to the server.",
-        variant: "destructive"
-      })
+      if (error?.status === 403 || error?.message?.toLowerCase().includes("access denied")) {
+        setIsAccessDenied(true)
+      } else {
+        setDebugInfo(`API Error: ${error?.message || 'Unknown error'}\nStatus: ${error?.status || 'N/A'}`)
+        toast({
+          title: "Error loading admins",
+          description: error?.message || "Could not connect to the server.",
+          variant: "destructive"
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -107,8 +113,9 @@ export default function AdminsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="relative min-h-[500px]">
+      <div className={cn("space-y-6 transition-all duration-300", isAccessDenied && "blur-md pointer-events-none select-none opacity-50")}>
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Management</h1>
           <p className="text-muted-foreground mt-1">Manage administrator accounts and permissions</p>
@@ -228,6 +235,22 @@ export default function AdminsPage() {
         onOpenChange={setIsCreateModalOpen}
         onSuccess={fetchAdmins}
       />
+      </div>
+
+      {isAccessDenied && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px] rounded-lg" />
+          <div className="relative z-10 flex flex-col items-center justify-center p-8 text-center max-w-md bg-card border shadow-xl rounded-2xl animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 border-[6px] border-rose-50/50 mb-6">
+              <Lock className="h-8 w-8 text-rose-500" />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight mb-2 text-foreground">Access Denied</h2>
+            <p className="text-muted-foreground text-sm">
+              Super Admin or higher role required.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

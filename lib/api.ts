@@ -74,6 +74,7 @@ export const authApi = {
     fetchApi<{ status: string; message: string; data: null; next: null }>("/admin/reset-password", {
       method: "POST",
       body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${data.token}` },
     }),
   logout: () =>
     fetchApi<{ status: string; message: string; data: null }>("/auth/logout", {
