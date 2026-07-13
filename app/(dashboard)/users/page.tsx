@@ -39,6 +39,7 @@ export default function UsersPage() {
   const { toast } = useToast()
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
 
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
@@ -56,20 +57,15 @@ export default function UsersPage() {
         console.warn("Failed to fetch balances", e);
       }
       
-      // Forcefully fetch first 5 pages concurrently to bypass any unreliable 'next' cursor issues
-      const pageRequests = [1, 2, 3, 4, 5].map(page => 
-        usersApi.fetchUsers(page).catch(err => {
-          console.warn(`Failed to fetch page ${page}`, err);
-          return null;
-        })
-      );
+      const usersRes = await usersApi.fetchUsers(currentPage, itemsPerPage).catch(err => {
+        console.warn(`Failed to fetch page ${currentPage}`, err);
+        return null;
+      });
       
-      const responses = await Promise.all(pageRequests);
-      
-      responses.forEach((usersRes, index) => {
-        if (!usersRes) return;
-        
-        console.log(`[PAGE ${index + 1}] API RESPONSE DEBUG:`, usersRes);
+      let total = 0;
+
+      if (usersRes) {
+        console.log(`[PAGE ${currentPage}] API RESPONSE DEBUG:`, usersRes);
         
         const rawData = (usersRes as any)?.data;
         let usersArray: any[] = [];
@@ -78,8 +74,10 @@ export default function UsersPage() {
           usersArray = rawData;
         } else if (rawData?.data && Array.isArray(rawData.data)) {
           usersArray = rawData.data;
+          total = rawData.total ?? rawData.pagination?.total ?? 0;
         } else if (rawData?.users?.data && Array.isArray(rawData.users.data)) {
           usersArray = rawData.users.data;
+          total = rawData.users.total ?? rawData.users.pagination?.total ?? 0;
         } else if (rawData?.user_details) {
           usersArray = Array.isArray(rawData.user_details) ? rawData.user_details : [rawData.user_details];
         } else if (rawData?.users) {
@@ -92,8 +90,25 @@ export default function UsersPage() {
           }
         }
         
-        allFetchedUsers = [...allFetchedUsers, ...usersArray];
-      });
+        if (total === 0 || total === usersArray.length) {
+          total = (usersRes as any).total ?? (usersRes as any).pagination?.total;
+          
+          if (!total) {
+            // Backend isn't returning total count.
+            // If we received any users, assume there might be a next page.
+            if (usersArray.length > 0) {
+              total = currentPage * itemsPerPage + 1;
+            } else {
+              // If we received 0 users, we've reached the end.
+              total = (currentPage - 1) * itemsPerPage;
+            }
+          }
+        }
+        
+        allFetchedUsers = usersArray;
+      }
+      
+      setTotalItems(total);
       
       const balancesData = balancesRes?.data?.balances?.["wallet Balance"] || []
       const balanceMap = new Map<string, number>()
@@ -138,7 +153,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers()
-  }, [toast])
+  }, [toast, currentPage])
 
   const filteredUsers = users.filter(
     (user) =>
@@ -152,9 +167,9 @@ export default function UsersPage() {
     setCurrentPage(1)
   }, [searchQuery])
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedUsers = filteredUsers
 
   const formatCurrency = (amount: number) => {
     const formattedAmount = new Intl.NumberFormat("en-US", {
@@ -189,7 +204,7 @@ export default function UsersPage() {
           />
         </div> */}
         <div className="text-sm text-slate-500 font-medium">
-          <span className="text-slate-900 font-semibold">{filteredUsers.length}</span> users
+          <span className="text-slate-900 font-semibold">{totalItems}</span> users
         </div>
       </div>
 

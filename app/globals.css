@@ -176,3 +176,13 @@
   label { @apply text-[14px] font-medium; }
   small { @apply text-[12px] font-normal; }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
