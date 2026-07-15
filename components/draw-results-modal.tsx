@@ -62,7 +62,7 @@ export function DrawResultsModal({ open, onOpenChange, game }: DrawResultsModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Draw Results</DialogTitle>
           <DialogDescription className="font-mono text-xs">
@@ -75,7 +75,7 @@ export function DrawResultsModal({ open, onOpenChange, game }: DrawResultsModalP
               <TableRow>
                 <TableHead>Draw Timestamp</TableHead>
                 <TableHead>Ticket #</TableHead>
-                <TableHead>Winner UID</TableHead>
+                <TableHead>Winner</TableHead>
                 <TableHead>Prize Amount</TableHead>
               </TableRow>
             </TableHeader>
@@ -86,15 +86,32 @@ export function DrawResultsModal({ open, onOpenChange, game }: DrawResultsModalP
                 </TableRow>
               ) : results.length > 0 ? (
                 results.map((result, i) => (
-                  <TableRow key={result.id || i}>
-                    <TableCell className="font-mono text-xs">{result.timestamp || result.created_at || "N/A"}</TableCell>
+                  <TableRow key={result.ticket || result.id || i}>
+                    <TableCell className="font-mono text-xs">
+                      {result.wonAt ? new Date(result.wonAt).toLocaleString() : result.timestamp || result.created_at || "N/A"}
+                    </TableCell>
                     <TableCell className="font-medium text-sm">{result.ticket || result.ticket_number || "N/A"}</TableCell>
                     <TableCell>
-                      <Link href={`/users/${result.uid || result.user_id}`} className="text-blue-600 hover:underline text-sm font-mono">
-                        {result.uid || result.user_id || "Unknown"}
-                      </Link>
+                      <div className="flex flex-col">
+                        {result.uid || result.user_id ? (
+                          <Link href={`/users/${result.uid || result.user_id}`} className="text-blue-600 hover:underline text-sm font-medium">
+                            {result.player?.name || result.uid || result.user_id}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-medium">{result.player?.name || "Unknown"}</span>
+                        )}
+                        {result.player?.email && (
+                          <span className="text-xs text-muted-foreground">{result.player.email}</span>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-green-600 font-bold text-sm">{result.amount || result.prize || result.prize_amount || "N/A"}</TableCell>
+                    <TableCell className="text-green-600 font-bold text-sm">
+                      {result.amountWon !== undefined 
+                        ? `₦${Number(result.amountWon).toLocaleString()}` 
+                        : result.amount || result.prize || result.prize_amount 
+                          ? `₦${Number(result.amount || result.prize || result.prize_amount).toLocaleString()}` 
+                          : "N/A"}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
