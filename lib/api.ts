@@ -32,6 +32,15 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   console.log(`[API RESPONSE] for ${url}:`, data);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth-storage");
+        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        window.location.href = "/login";
+      }
+    }
+
     let errorMessage = data.message || data.description || `Request failed with status ${response.status}`;
     if (data.errors) {
       errorMessage = typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors);
@@ -76,10 +85,10 @@ export const authApi = {
       body: JSON.stringify(data),
       headers: { Authorization: `Bearer ${data.token}` },
     }),
-  logout: () =>
-    fetchApi<{ status: string; message: string; data: null }>("/auth/logout", {
-      method: "POST",
-    }),
+  logout: async () => {
+    // Backend has no logout endpoint, so we just resolve successfully
+    return { status: "success", message: "Logged out locally", data: null };
+  },
 }
 
 // Games APIs
@@ -95,7 +104,7 @@ export const gamesApi = {
   startGame: (gameId: string) => fetchApi("/start-game", { method: "POST", body: JSON.stringify({ gameId }) }),
   stopGame: (gameId: string) => fetchApi("/admin/games/stop", { method: "POST", body: JSON.stringify({ game_id: gameId }) }),
   getDraws: (gameId: string) => fetchApi(`/get-draws?gameId=${gameId}`),
-  getResults: (gameId: string) => fetchApi(`/admin/games/results/${gameId}`),
+  getResults: (gameId: string, page: number = 1) => fetchApi(`/admin/games/results/${gameId}?page=${page}`),
   fetchGameParticipants: (gameId: string, page: number = 1) => fetchApi<any>(`/admin/games/participants/${gameId}?page=${page}`),
 }
 
